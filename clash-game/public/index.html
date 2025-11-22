@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Clash Online</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+/* --- 1. 核心變數與全域設定 --- */
+:root {
+    --primary: #3498db; --accent: #f1c40f; --danger: #e74c3c; --success: #2ecc71;
+    --dark-bg: #1e272e; --ui-glass: rgba(30, 39, 46, 0.95);
+    --font-main: "PingFang TC", system-ui, sans-serif;
+    --common: #bdc3c7; --rare: #f39c12; --epic: #9b59b6; --legendary: #00cec9;
+    --gold: #ffd700; --gem: #2ecc71;
+}
+
+body {
+    margin: 0; padding: 0; background-color: #000; color: white;
+    font-family: var(--font-main); overflow: hidden; width: 100%; height: 100%;
+    user-select: none; touch-action: none; position: fixed;
+}
+
+/* --- 遊戲層 (戰鬥畫面) --- */
+#game-container { 
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+    display: none; /* 預設隱藏，等配對成功再顯示 */
+    flex-direction: column; z-index: 1; 
+}
+/* 顯示時要用 flex */
+#game-container.active { display: flex; }
+
+#canvas-wrapper { position: relative; flex: 1; width: 100%; background: #2c3e50; overflow: hidden; }
+canvas { display: block; width: 100%; height: 100%; }
+
+/* --- 戰鬥 UI --- */
+#ui-layer { height: 160px; background: var(--ui-glass); border-top: 1px solid rgba(255,255,255,0.15); display: flex; flex-direction: column; padding: 5px 10px; z-index: 20; position: relative; box-sizing: border-box; }
+#elixir-area { display: flex; align-items: center; gap: 10px; height: 30px; margin-bottom: 5px; }
+#elixir-badge { width: 30px; height: 30px; background: #a55eea; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 2px solid #fff; z-index: 5; }
+#elixir-bar-bg { flex: 1; height: 12px; background: #000; border-radius: 10px; border: 2px solid #57606f; position: relative; overflow: hidden; }
+#elixir-fill { height: 100%; width: 0%; background: #d980fa; transition: width 0.1s linear; }
+#deck-area { display: flex; gap: 8px; height: 100%; flex: 1; overflow: hidden; }
+#hand-cards { display: flex; gap: 6px; flex: 1; justify-content: space-between; }
+#next-slot { width: 45px; background: rgba(0,0,0,0.3); border-radius: 10px; display: flex; flex-direction: column; align-items: center; padding: 4px; flex-shrink: 0; }
+
+.card {
+    flex: 1; max-width: 85px; height: 90%; background: #2c3e50; border-radius: 10px;
+    border: 2px solid #57606f; position: relative; overflow: hidden; transition: transform 0.1s;
+}
+.card.common { border-color: var(--common); } .card.rare { border-color: var(--rare); } 
+.card.epic { border-color: var(--epic); } .card.legendary { border-color: var(--legendary); }
+.card.selected { transform: translateY(-12px); border-color: #fff; box-shadow: 0 0 15px rgba(255,255,255,0.5); z-index: 10; }
+.card.disabled { filter: grayscale(1) brightness(0.5); }
+.cost { position: absolute; top: 0; left: 0; background: #fff; color: #8854d0; width: 18px; height: 18px; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 8px; z-index: 2; }
+.card-inner { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 10px; }
+.emoji { font-size: 28px; }
+
+/* HUD & Overlays */
+#hud-top { position: absolute; top: 0; left: 0; width: 100%; padding: 10px; display: flex; justify-content: space-between; pointer-events: none; z-index: 15; box-sizing: border-box; }
+#timer-box { background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); }
+#enemy-info { background: rgba(231,76,60,0.8); padding: 5px 12px; border-radius: 12px; border: 2px solid #fff; pointer-events: auto; display: flex; align-items: center; gap: 5px; font-weight: bold; }
+#message { position: absolute; top: 30%; width: 100%; text-align: center; font-size: 48px; font-weight: 900; color: var(--accent); text-shadow: 0 4px 15px rgba(0,0,0,0.6); opacity: 0; transition: 0.3s; transform: scale(0.5); z-index: 50; pointer-events: none; }
+#message.show { opacity: 1; transform: scale(1); }
+.hidden { display: none !important; }
+
+/* --- 全新大廳系統 (Lobby System) --- */
+#lobby-layer {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(135deg, #130f40, #30336b);
+    z-index: 100; display: flex; flex-direction: column;
+}
+
+/* 資源列 */
+#top-bar {
+    height: 60px; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: space-between; padding: 0 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.1); box-sizing: border-box;
+}
+.res-group { display: flex; gap: 15px; }
+.res-item { display: flex; align-items: center; gap: 5px; font-weight: bold; font-size: 14px; background: rgba(0,0,0,0.5); padding: 4px 10px; border-radius: 15px; }
+.icon-gold { color: var(--gold); } .icon-gem { color: var(--gem); } .icon-trophy { color: var(--accent); }
+
+/* 內容區 */
+#tab-content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px; position: relative; box-sizing: border-box; }
+.tab-pane { display: none; animation: fadeIn 0.3s; height: 100%; width: 100%; }
+.tab-pane.active { display: flex; flex-direction: column; align-items: center; }
+
+/* 底部導航 */
+#nav-bar {
+    height: 70px; background: #1e272e; border-top: 1px solid rgba(255,255,255,0.1);
+    display: flex; justify-content: space-around; align-items: center;
+    position: absolute; bottom: 0; width: 100%; z-index: 101;
+}
+.nav-btn {
+    background: none; border: none; color: #7f8c8d; font-size: 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    cursor: pointer; width: 25%; transition: 0.2s;
+}
+.nav-btn i { font-size: 24px; font-style: normal; }
+.nav-btn.active { color: #fff; transform: translateY(-5px); }
+.nav-btn.active i { color: var(--primary); text-shadow: 0 0 10px var(--primary); }
+
+/* --- 分頁樣式 --- */
+.hero-banner { text-align: center; margin-top: 20px; margin-bottom: 30px; }
+.rank-badge { width: 100px; height: 100px; background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="%23f1c40f" d="M50 2 L90 25 L90 75 L50 98 L10 75 L10 25 Z"/></svg>') no-repeat center; background-size: contain; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 40px; filter: drop-shadow(0 0 10px rgba(241, 196, 15, 0.5)); }
+.arena-name { font-size: 24px; font-weight: bold; color: #fff; margin-top: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+.chest-slots { display: flex; gap: 10px; width: 100%; justify-content: center; margin-bottom: 30px; }
+.chest { width: 70px; height: 70px; background: #57606f; border-radius: 10px; border: 2px dashed #7f8c8d; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #a4b0be; flex-direction: column; cursor: pointer; text-align: center; }
+.chest.has-loot { background: linear-gradient(135deg, #6c5ce7, #a55eea); border: 2px solid #fff; color: #fff; border-style: solid; animation: pulse 2s infinite; }
+
+.btn-battle {
+    background: linear-gradient(180deg, #f1c40f, #e67e22); border: none; border-radius: 12px;
+    padding: 15px 60px; font-size: 28px; font-weight: 900; color: #fff;
+    box-shadow: 0 6px 0 #d35400, 0 15px 20px rgba(0,0,0,0.4); cursor: pointer;
+    text-transform: uppercase; letter-spacing: 2px; transition: 0.1s; margin-bottom: 20px;
+}
+.btn-battle:active { transform: translateY(6px); box-shadow: 0 0 0 #d35400; }
+.btn-battle:disabled { filter: grayscale(1); transform: translateY(6px); box-shadow: 0 0 0 #555; cursor: not-allowed; }
+
+/* Deck Grid */
+.deck-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; max-width: 500px; box-sizing: border-box; }
+.deck-card {
+    aspect-ratio: 3/4; background: #34495e; border-radius: 8px; position: relative; border: 2px solid transparent; cursor: pointer;
+}
+.deck-card.equipped { border-color: #2ecc71; box-shadow: 0 0 10px rgba(46, 204, 113, 0.3); }
+.deck-card .lv-badge { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); background: #000; padding: 1px 6px; font-size: 10px; border-radius: 4px; color: #fff; white-space: nowrap; }
+.deck-card .upgrade-arrow { position: absolute; top: -5px; right: -5px; background: #2ecc71; color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); animation: bounce 1s infinite; }
+.upgrade-panel { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; margin-top: 15px; width: 100%; text-align: center; display: none; box-sizing: border-box; }
+.upgrade-panel.active { display: block; }
+.progress-bar { width: 100%; height: 6px; background: #000; border-radius: 3px; margin: 5px 0; overflow: hidden; }
+.progress-fill { height: 100%; background: #2ecc71; width: 50%; }
+
+/* Social */
+.social-header { display: flex; gap: 10px; width: 100%; margin-bottom: 20px; }
+.tab-pill { flex: 1; background: rgba(255,255,255,0.1); padding: 10px; text-align: center; border-radius: 8px; cursor: pointer; }
+.tab-pill.active { background: var(--primary); font-weight: bold; }
+.friend-list, .clan-view { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.social-item { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+.status-dot { width: 10px; height: 10px; border-radius: 50%; background: #95a5a6; display: inline-block; margin-right: 5px; }
+.status-dot.online { background: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
+.btn-mini { padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 12px; }
+.btn-invite { background: #3498db; color: white; }
+.btn-spectate { background: #9b59b6; color: white; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(165, 94, 234, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(165, 94, 234, 0); } 100% { box-shadow: 0 0 0 0 rgba(165, 94, 234, 0); } }
+
+</style>
+</head>
+<body>
+
+<!-- 大廳 (Lobby) -->
+<div id="lobby-layer">
+    <!-- 頂部資源 -->
+    <div id="top-bar">
+        <div class="res-group">
+            <div class="res-item"><span class="icon-gold">💰</span> <span id="ui-gold">0</span></div>
+            <div class="res-item"><span class="icon-gem">💎</span> <span id="ui-gem">0</span></div>
+        </div>
+        <div class="res-item"><span class="icon-trophy">🏆</span> <span id="ui-trophy">0</span></div>
+    </div>
+
+    <!-- 分頁內容 -->
+    <div id="tab-content">
+        <!-- Battle Tab -->
+        <div id="tab-battle" class="tab-pane active">
+            <div class="hero-banner">
+                <div class="rank-badge" id="rank-icon">🛡️</div>
+                <div class="arena-name" id="arena-name">訓練營</div>
+                <div style="color:#aaa; font-size:12px; margin-top:5px;">賽季剩餘 12 天</div>
+            </div>
+            <div class="chest-slots">
+                <div class="chest has-loot" onclick="Lobby.openChest(this)"><div>📦</div>銀寶箱<br><span style="font-size:10px">3h</span></div>
+                <div class="chest">空位</div>
+                <div class="chest">空位</div>
+                <div class="chest">空位</div>
+            </div>
+            <button id="btn-find-match" class="btn-battle" onclick="Lobby.findMatch()">開始對戰</button>
+            
+            <!-- Daily Quest -->
+            <div style="width:100%; background:rgba(0,0,0,0.2); padding:10px; border-radius:10px; margin-top:10px; box-sizing: border-box;">
+                <div style="font-size:14px; font-weight:bold; margin-bottom:5px; display:flex; justify-content:space-between;">
+                    <span>📜 每日任務</span> <span style="color:var(--success)">1/3</span>
+                </div>
+                <div style="font-size:12px; color:#ccc;">使用 10 次火球術 (5/10)</div>
+                <div class="progress-bar" style="background:#444;"><div class="progress-fill" style="width:50%; background:var(--accent);"></div></div>
+            </div>
+        </div>
+
+        <!-- Deck Tab -->
+        <div id="tab-deck" class="tab-pane">
+            <h2 style="margin:0 0 10px 0;">戰鬥牌組</h2>
+            <div class="deck-grid" id="deck-grid"></div>
+            
+            <div id="upgrade-panel" class="upgrade-panel">
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                    <div style="font-size:30px;" id="upg-icon"></div>
+                    <div style="text-align:left;">
+                        <div style="font-weight:bold;" id="upg-name"></div>
+                        <div style="font-size:12px; color:#aaa;" id="upg-level">Lv.1</div>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;">
+                    <span>碎片收集</span> <span id="upg-count">0/10</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="upg-bar"></div></div>
+                <button id="btn-upgrade" class="btn-battle" style="font-size:16px; padding:10px; width:100%; margin-top:10px;" onclick="Lobby.upgradeCard()">
+                    升級 <span id="upg-cost">💰 50</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Social Tab -->
+        <div id="tab-social" class="tab-pane">
+            <div class="social-header">
+                <div class="tab-pill active" onclick="Lobby.switchSocial('friends')">好友</div>
+                <div class="tab-pill" onclick="Lobby.switchSocial('clan')">部落</div>
+            </div>
+            <div id="view-friends" class="friend-list">
+                <div class="social-item">
+                    <div style="display:flex; align-items:center;">
+                        <div class="status-dot online"></div>
+                        <div><div>王者阿明</div><div style="font-size:10px; color:#aaa;">🏆 1250</div></div>
+                    </div>
+                    <div style="display:flex; gap:5px;"><button class="btn-mini btn-spectate">觀戰</button><button class="btn-mini btn-invite">友誼戰</button></div>
+                </div>
+                <div class="social-item">
+                    <div style="display:flex; align-items:center;">
+                        <div class="status-dot"></div>
+                        <div><div>夜煞</div><div style="font-size:10px; color:#aaa;">離線 2h</div></div>
+                    </div>
+                </div>
+                <button class="social-item" style="justify-content:center; color:var(--accent); border:1px dashed #aaa; cursor:pointer;">+ 新增好友</button>
+            </div>
+            <div id="view-clan" class="clan-view hidden">
+                <div style="text-align:center; padding:20px; background:rgba(0,0,0,0.2); border-radius:10px;">
+                    <div style="font-size:40px;">🛡️</div><h2>皇家護衛隊</h2>
+                    <p style="color:#aaa; font-size:12px;">歡迎活躍玩家加入！每週捐卡！</p>
+                    <button class="btn-mini btn-invite" style="font-size:14px; padding:8px 20px;">進入聊天室</button>
+                </div>
+                <h3 style="margin:10px 0;">卡牌請求</h3>
+                <div class="social-item">
+                    <div><div style="font-size:12px;"><b>小胖</b> 請求支援</div><div style="display:flex; align-items:center; gap:5px;"><span>🐗 野豬騎士</span><span style="font-size:10px; color:#aaa;">(2/4)</span></div></div>
+                    <button class="btn-mini btn-invite" onclick="alert('捐贈成功！獲得 50 金幣')">捐贈</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shop Tab -->
+        <div id="tab-shop" class="tab-pane">
+            <h2>每日精選</h2>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div style="background:#fff; color:#000; padding:10px; border-radius:8px; text-align:center;">
+                    <div style="font-size:30px;">🏹</div><div>弓箭手 x10</div><button class="btn-mini btn-invite" style="margin-top:5px;">💰 100</button>
+                </div>
+                <div style="background:#fff; color:#000; padding:10px; border-radius:8px; text-align:center;">
+                    <div style="font-size:30px;">💎</div><div>一袋寶石</div><button class="btn-mini btn-spectate" style="margin-top:5px;">$0.99</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nav -->
+    <div id="nav-bar">
+        <button class="nav-btn active" onclick="Lobby.switchTab('battle', this)"><i>⚔️</i>戰鬥</button>
+        <button class="nav-btn" onclick="Lobby.switchTab('deck', this)"><i>🃏</i>牌組</button>
+        <button class="nav-btn" onclick="Lobby.switchTab('shop', this)"><i>🏪</i>商店</button>
+        <button class="nav-btn" onclick="Lobby.switchTab('social', this)"><i>👥</i>社交</button>
+    </div>
+</div>
+
+<!-- 遊戲層 -->
+<div id="game-container">
+    <div id="canvas-wrapper">
+        <canvas id="gameCanvas"></canvas>
+        <div id="hud-top">
+            <div id="enemy-info">⚔️ <span id="enemy-name-txt">對手</span></div>
+            <div id="timer-box"><div id="timer">03:00</div></div>
+        </div>
+        <div id="message"></div>
+    </div>
+    <div id="ui-layer">
+        <div id="elixir-area">
+            <div id="elixir-badge">5</div>
+            <div id="elixir-bar-bg"><div id="elixir-fill"></div></div>
+        </div>
+        <div id="deck-area">
+            <div id="next-slot"><span style="font-size:9px;color:#aaa;">下張</span><div class="emoji" id="next-icon" style="font-size:20px">?</div></div>
+            <div id="hand-cards"></div>
+        </div>
+    </div>
+    <!-- 結算畫面 -->
+    <div id="end-screen" class="hidden" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:200;">
+        <h1 id="end-title" style="font-size:60px; margin:0;">勝利</h1>
+        <div style="font-size:20px; margin-bottom:20px; display:flex; align-items:center; gap:10px;">
+            <span id="end-trophy-change" style="color:var(--accent)">+30 🏆</span>
+            <span style="color:var(--gold)">+50 💰</span>
+        </div>
+        <button class="btn-battle" onclick="location.reload()">返回大廳</button>
+    </div>
+</div>
+
+<script>
+// --- 配置與資料庫 ---
+const CONFIG = {
+    ELIXIR_RATE: 0.018, ELIXIR_MAX: 10, 
+    COLORS: { P_MAIN: '#3498db', E_MAIN: '#e74c3c' }
+};
+
+const DB = {
+    cards: {
+        knight: { name: '騎士', cost: 3, icon: '⚔️', rarity: 'common', hp: 1400, dmg: 130, speed: 0.6, type: 'ground', range: 30 },
+        archer: { name: '弓箭手', cost: 3, icon: '🏹', rarity: 'common', hp: 350, dmg: 80, speed: 0.7, type: 'ground', count: 2, range: 120 },
+        giant: { name: '巨人', cost: 5, icon: '🦍', rarity: 'rare', hp: 3500, dmg: 250, speed: 0.4, type: 'ground', target: 'building', range: 30 },
+        fireball: { name: '火球術', cost: 4, icon: '🔥', rarity: 'rare', type: 'spell', dmg: 350, aoe: 100 },
+        musketeer: { name: '火槍手', cost: 4, icon: '👒', rarity: 'rare', hp: 600, dmg: 180, speed: 0.6, type: 'ground', range: 150 },
+        bats: { name: '蝙蝠', cost: 2, icon: '🦇', rarity: 'common', hp: 50, dmg: 50, speed: 1.0, type: 'air', count: 4, range: 20 },
+        hogrider: { name: '野豬騎士', cost: 4, icon: '🐷', rarity: 'rare', hp: 1400, dmg: 260, speed: 1.2, type: 'ground', target: 'building', range: 20 },
+        prince: { name: '王子', cost: 5, icon: '🐎', rarity: 'epic', hp: 1600, dmg: 325, speed: 0.8, type: 'ground', charge: true, range: 30 }
+    }
+};
+
+// 玩家存檔 (模擬)
+let Player = {
+    name: "玩家1",
+    gold: 150, gems: 20, trophies: 1000,
+    deck: ['knight', 'archer', 'giant', 'fireball', 'musketeer', 'bats'],
+    collection: {
+        knight: { level: 1, shards: 50, maxShards: 50 },
+        archer: { level: 1, shards: 10, maxShards: 50 },
+        giant: { level: 2, shards: 2, maxShards: 20 },
+        fireball: { level: 1, shards: 0, maxShards: 20 },
+        musketeer: { level: 1, shards: 5, maxShards: 20 },
+        bats: { level: 3, shards: 80, maxShards: 100 },
+        hogrider: { level: 1, shards: 0, maxShards: 20 },
+        prince: { level: 1, shards: 0, maxShards: 10 }
+    }
+};
+
+// --- Lobby Logic ---
+const Lobby = {
+    init() {
+        this.renderResources();
+        this.renderDeck();
+        this.updateRank();
+    },
+    renderResources() {
+        document.getElementById('ui-gold').innerText = Player.gold;
+        document.getElementById('ui-gem').innerText = Player.gems;
+        document.getElementById('ui-trophy').innerText = Player.trophies;
+    },
+    updateRank() {
+        const arenas = ["訓練營", "哥布林競技場", "白骨坑", "野蠻人擂台"];
+        const idx = Math.min(Math.floor(Player.trophies / 400), arenas.length-1);
+        document.getElementById('arena-name').innerText = arenas[idx];
+    },
+    switchTab(tabName, btn) {
+        document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+        document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+        if(btn) btn.classList.add('active');
+    },
+    switchSocial(mode) {
+        document.querySelectorAll('.tab-pill').forEach(el => el.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById('view-friends').classList.toggle('hidden', mode !== 'friends');
+        document.getElementById('view-clan').classList.toggle('hidden', mode !== 'clan');
+    },
+    renderDeck() {
+        const grid = document.getElementById('deck-grid');
+        grid.innerHTML = '';
+        Object.keys(Player.collection).forEach(key => {
+            const card = DB.cards[key];
+            const data = Player.collection[key];
+            const el = document.createElement('div');
+            const equipped = Player.deck.includes(key) ? 'equipped' : '';
+            const canUpgrade = data.shards >= data.maxShards && Player.gold >= 50;
+            const arrow = canUpgrade ? `<div class="upgrade-arrow">⬆</div>` : '';
+            
+            el.className = `deck-card card ${card.rarity} ${equipped}`;
+            el.innerHTML = `${arrow}<div class="cost">${card.cost}</div><div class="card-inner"><div class="emoji">${card.icon}</div></div><div class="lv-badge">Lv.${data.level}</div>`;
+            el.onclick = () => this.selectCardForUpgrade(key);
+            grid.appendChild(el);
+        });
+    },
+    selectCardForUpgrade(key) {
+        const card = DB.cards[key];
+        const data = Player.collection[key];
+        const panel = document.getElementById('upgrade-panel');
+        const btn = document.getElementById('btn-upgrade');
+        
+        panel.classList.add('active');
+        document.getElementById('upg-icon').innerText = card.icon;
+        document.getElementById('upg-name').innerText = card.name;
+        document.getElementById('upg-level').innerText = `等級 ${data.level}`;
+        document.getElementById('upg-count').innerText = `${data.shards}/${data.maxShards}`;
+        
+        const pct = Math.min(100, (data.shards / data.maxShards) * 100);
+        document.getElementById('upg-bar').style.width = `${pct}%`;
+        
+        if (data.shards >= data.maxShards && Player.gold >= 50) {
+            btn.style.background = '#2ecc71'; btn.disabled = false;
+            btn.onclick = () => {
+                Player.gold -= 50; data.level++; data.shards -= data.maxShards; data.maxShards += 10;
+                alert(`升級成功！${card.name} Lv.${data.level}`);
+                this.init(); this.selectCardForUpgrade(key);
+            };
+        } else {
+            btn.style.background = '#95a5a6'; btn.disabled = true;
+        }
+    },
+    openChest(el) {
+        if(!el.classList.contains('has-loot')) return;
+        el.classList.remove('has-loot'); el.innerText = "開啟中...";
+        setTimeout(() => {
+            const gold = Math.floor(Math.random()*50)+20;
+            const gems = Math.floor(Math.random()*3);
+            Player.gold += gold; Player.gems += gems;
+            const cardKey = Object.keys(Player.collection)[Math.floor(Math.random()*Object.keys(Player.collection).length)];
+            Player.collection[cardKey].shards += 5;
+            alert(`獲得：\n💰 ${gold} 金幣\n💎 ${gems} 寶石\n🃏 ${DB.cards[cardKey].name} x5`);
+            el.innerText = "空位";
+            this.init();
+        }, 1000);
+    },
+    findMatch() {
+        document.getElementById('btn-find-match').disabled = true;
+        document.getElementById('btn-find-match').innerText = "尋找中...";
+        Game.startMatchmaking();
+    }
+};
+
+// --- Game Logic ---
+const Game = {
+    canvas: null, ctx: null, width: 0, height: 0, running: false,
+    units: [], towers: [], projectiles: [], elixir: 5, hand: [], nextCard: null,
+    socket: null, roomID: null, selectedCardIdx: null,
+
+    init() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // 不要在一開始 resize，因為 container 是 hidden，寬高會是 0
+        // 綁定輸入事件
+        const wrapper = document.getElementById('canvas-wrapper');
+        wrapper.addEventListener('pointerdown', (e) => this.onInput(e));
+        
+        Lobby.init();
+    },
+
+    // 這是修復的關鍵：切換畫面並計算尺寸
+    activateGameView() {
+        document.getElementById('lobby-layer').style.display = 'none';
+        const container = document.getElementById('game-container');
+        container.classList.add('active'); // 設為 flex 顯示
+        
+        // 強制等待 DOM 渲染後再 resize
+        setTimeout(() => {
+            this.resize();
+            this.canvas.width = this.width;
+            this.canvas.height = this.height;
+        }, 50);
+        
+        window.addEventListener('resize', () => this.resize());
+    },
+
+    resize() {
+        const wrapper = document.getElementById('canvas-wrapper');
+        if(wrapper) {
+            this.width = wrapper.clientWidth;
+            this.height = wrapper.clientHeight;
+            this.canvas.width = this.width;
+            this.canvas.height = this.height;
+        }
+    },
+
+    startMatchmaking() {
+        if(!this.socket) this.socket = io();
+        
+        this.socket.emit('find_match', { trophies: Player.trophies });
+
+        this.socket.on('game_start', (data) => {
+            this.roomID = data.roomID;
+            this.showMessage("配對成功！");
+            document.getElementById('enemy-name-txt').innerText = "挑戰者";
+            setTimeout(() => this.startGame(), 1000);
+        });
+
+        this.socket.on('no_match_found', () => {
+            this.roomID = 'local_bot';
+            this.showMessage("訓練師來襲！");
+            document.getElementById('enemy-name-txt').innerText = "訓練師 AI";
+            setTimeout(() => this.startGame(), 1000);
+        });
+
+        this.socket.on('remote_action', (data) => {
+            if(data.type === 'spawn') {
+                // 轉換座標 (對手視角反轉)
+                const realX = (1 - data.nx) * this.width;
+                const realY = (1 - data.ny) * this.height;
+                this.spawnUnit(data.card, realX, realY, 'enemy', true);
+            }
+        });
+    },
+
+    startGame() {
+        this.activateGameView(); // 切換畫面 & 修正 Canvas 尺寸
+        this.running = true;
+        this.elixir = 5;
+        this.units = []; this.projectiles = [];
+        
+        // 初始化塔
+        const pY = this.height - 100, eY = 100;
+        const bL = this.width * 0.25, bR = this.width * 0.75;
+        
+        this.towers = [
+            new Tower(bL, pY, 'player', false), new Tower(bR, pY, 'player', false), new Tower(this.width/2, pY+40, 'player', true),
+            new Tower(bL, eY, 'enemy', false), new Tower(bR, eY, 'enemy', false), new Tower(this.width/2, eY-40, 'enemy', true)
+        ];
+
+        // 牌組
+        let deck = [...Player.deck, ...Player.deck].sort(()=>Math.random()-0.5);
+        this.hand = deck.slice(0,4);
+        this.nextCard = deck[4];
+        this.renderHand();
+
+        // 計時器
+        let timeLeft = 180;
+        const timerEl = document.getElementById('timer');
+        this.timerInt = setInterval(() => {
+            if(!this.running) return;
+            timeLeft--;
+            const m = Math.floor(timeLeft/60), s = timeLeft%60;
+            timerEl.innerText = `0${m}:${s<10?'0'+s:s}`;
+            if(timeLeft <= 0) this.endGame(null);
+        }, 1000);
+
+        // AI
+        if(this.roomID === 'local_bot') {
+            setInterval(() => {
+                if(!this.running) return;
+                const cards = ['knight','archer','giant'];
+                const k = cards[Math.floor(Math.random()*cards.length)];
+                const x = Math.random()>0.5 ? bL : bR;
+                this.spawnUnit(k, x, 80, 'enemy');
+            }, 4000);
+        }
+
+        this.lastTime = Date.now();
+        this.loop();
+    },
+
+    loop() {
+        if(!this.running) return;
+        requestAnimationFrame(() => this.loop());
+        
+        const now = Date.now();
+        // const dt = (now - this.lastTime) / 1000; // 未使用，保留給物理計算
+        this.lastTime = now;
+
+        if(this.elixir < CONFIG.ELIXIR_MAX) this.elixir += CONFIG.ELIXIR_RATE;
+        document.getElementById('elixir-fill').style.width = (this.elixir*10)+'%';
+        document.getElementById('elixir-badge').innerText = Math.floor(this.elixir);
+        document.querySelectorAll('#hand-cards .card').forEach((el,i)=>{
+             if(this.hand[i]) el.classList.toggle('disabled', this.elixir < DB.cards[this.hand[i]].cost);
+        });
+
+        this.updateEntities();
+        this.draw();
+    },
+
+    updateEntities() {
+        [...this.units, ...this.towers].forEach(e => {
+            if(e.dead) return;
+            let target = null, minD = e.range + 50;
+            const targets = e.targetType === 'building' ? 
+                [...this.towers, ...this.units.filter(u=>u.type==='building')] : [...this.units, ...this.towers];
+            
+            targets.forEach(other => {
+                if(e.team !== other.team && !other.dead) {
+                    let d = Math.hypot(e.x - other.x, e.y - other.y);
+                    if(d < minD) { minD = d; target = other; }
+                }
+            });
+
+            if(target && minD <= e.range + target.radius) {
+                if(e.atkTimer <= 0) {
+                    // 攻擊發射
+                    this.projectiles.push({
+                        x: e.x, y: e.y, tx: target.x, ty: target.y, target: target,
+                        speed: 6, dmg: e.dmg, team: e.team, isSpell: false
+                    });
+                    e.atkTimer = 60; // 約1秒攻擊一次
+                }
+            } else if(target && e.speed > 0) {
+                // 移動
+                let angle = Math.atan2(target.y - e.y, target.x - e.x);
+                e.x += Math.cos(angle) * e.speed;
+                e.y += Math.sin(angle) * e.speed;
+            } else if(e.speed > 0) {
+                // 沒目標往前走
+                e.y += (e.team === 'player' ? -1 : 1) * e.speed;
+            }
+            if(e.atkTimer > 0) e.atkTimer--;
+        });
+
+        // 子彈
+        this.projectiles.forEach(p => {
+            if(p.dead) return;
+            let dx = p.tx - p.x, dy = p.ty - p.y;
+            let dist = Math.hypot(dx, dy);
+            
+            if(!p.isSpell && p.target && !p.target.dead) {
+                // 追蹤目標更新位置
+                p.tx = p.target.x; p.ty = p.target.y;
+                dx = p.tx - p.x; dy = p.ty - p.y; dist = Math.hypot(dx, dy);
+            }
+
+            if(dist < p.speed || (p.isSpell && dist < 10)) {
+                p.dead = true;
+                // 傷害判定
+                const targets = [...this.units, ...this.towers];
+                targets.forEach(u => {
+                    if(u.team !== p.team && !u.dead && Math.hypot(u.x - p.tx, u.y - p.ty) < (p.aoe || 20)) {
+                        u.hp -= p.dmg;
+                        if(u.hp <= 0) u.dead = true;
+                    }
+                });
+            } else {
+                p.x += (dx/dist) * p.speed;
+                p.y += (dy/dist) * p.speed;
+            }
+        });
+
+        this.units = this.units.filter(u => !u.dead);
+        this.projectiles = this.projectiles.filter(p => !p.dead);
+        this.towers = this.towers.filter(t => !t.dead);
+
+        if(!this.towers.some(t => t.team === 'player' && t.isKing)) this.endGame(false);
+        else if(!this.towers.some(t => t.team === 'enemy' && t.isKing)) this.endGame(true);
+    },
+
+    draw() {
+        const ctx = this.ctx;
+        // 重要：若寬高為0不繪製
+        if(this.width === 0 || this.height === 0) return;
+        
+        ctx.clearRect(0,0,this.width, this.height);
+        
+        // 背景與地圖
+        ctx.fillStyle = '#27ae60'; ctx.fillRect(0,0,this.width,this.height);
+        ctx.fillStyle = 'rgba(0,0,0,0.05)'; // 格線
+        for(let i=0; i<this.width; i+=40) ctx.fillRect(i,0,1,this.height);
+        for(let i=0; i<this.height; i+=40) ctx.fillRect(0,i,this.width,1);
+
+        const ry = this.height * 0.5;
+        ctx.fillStyle = '#3498db'; ctx.fillRect(0, ry-20, this.width, 40); // 河流
+        ctx.fillStyle = '#95a5a6'; // 橋
+        const bW = 40;
+        ctx.fillRect(this.width*0.25-bW/2, ry-25, bW, 50);
+        ctx.fillRect(this.width*0.75-bW/2, ry-25, bW, 50);
+
+        // 繪製單位與塔
+        [...this.towers, ...this.units].forEach(u => {
+            ctx.save();
+            ctx.translate(u.x, u.y);
+            // 血條
+            const hpPct = Math.max(0, u.hp/u.maxHp);
+            ctx.fillStyle = '#000'; ctx.fillRect(-15, -u.radius-8, 30, 5);
+            ctx.fillStyle = u.team === 'player' ? '#3498db' : '#e74c3c'; ctx.fillRect(-14, -u.radius-7, 28*hpPct, 3);
+
+            // 本體
+            if(u.icon) {
+                ctx.font = "24px serif"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(u.icon, 0, 0);
+            } else {
+                // 塔
+                ctx.fillStyle = u.team === 'player' ? '#2980b9' : '#c0392b';
+                if(u.isKing) ctx.fillStyle = '#f1c40f';
+                ctx.fillRect(-u.radius, -u.radius, u.radius*2, u.radius*2);
+            }
+            ctx.restore();
+        });
+
+        // 子彈
+        this.projectiles.forEach(p => {
+            ctx.fillStyle = p.isSpell ? '#e67e22' : '#ffeaa7';
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.isSpell?8:4, 0, Math.PI*2); ctx.fill();
+        });
+    },
+
+    onInput(e) {
+        if(!this.running || this.selectedCardIdx === null) return;
+        const rect = this.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // 只能放己方半場 (spell 除外)
+        const cardKey = this.hand[this.selectedCardIdx];
+        const d = DB.cards[cardKey];
+        if(d.type !== 'spell' && y < this.height/2) { 
+            this.showMessage("僅能部署在己方區域"); return; 
+        }
+
+        if(this.elixir >= d.cost) {
+            this.elixir -= d.cost;
+            this.spawnUnit(cardKey, x, y, 'player');
+            
+            // 傳送動作給對手
+            if(this.socket && this.roomID !== 'local_bot') {
+                // 座標正規化 (0~1) 傳送
+                this.socket.emit('action', {
+                    roomID: this.roomID, type: 'spawn', card: cardKey,
+                    nx: x / this.width, ny: y / this.height
+                });
+            }
+
+            this.hand[this.selectedCardIdx] = this.nextCard;
+            this.nextCard = Player.deck[Math.floor(Math.random()*Player.deck.length)];
+            this.selectedCardIdx = null;
+            this.renderHand();
+        } else {
+            this.showMessage("聖水不足！");
+        }
+    },
+
+    spawnUnit(key, x, y, team, fromRemote=false) {
+        const d = DB.cards[key];
+        // 等級加成
+        const level = Player.collection[key].level;
+        const mult = 1 + (level-1)*0.1;
+
+        if(d.type === 'spell') {
+            this.projectiles.push({
+                x: fromRemote ? x : this.width/2, // 從遠處飛來
+                y: fromRemote ? 0 : this.height,
+                tx: x, ty: y, speed: 10, dmg: d.dmg*mult, team: team, isSpell: true, aoe: d.aoe
+            });
+        } else {
+            const count = d.count || 1;
+            for(let i=0; i<count; i++) {
+                this.units.push({
+                    x: x + (Math.random()-0.5)*20, y: y + (Math.random()-0.5)*20,
+                    team: team, hp: d.hp*mult, maxHp: d.hp*mult, dmg: d.dmg*mult,
+                    range: d.range, speed: d.speed, radius: 15,
+                    atkTimer: 0, icon: d.icon, type: d.type, targetType: d.target
+                });
+            }
+        }
+    },
+
+    renderHand() {
+        const container = document.getElementById('hand-cards');
+        container.innerHTML = '';
+        this.hand.forEach((key, i) => {
+            const d = DB.cards[key];
+            const el = document.createElement('div');
+            el.className = `card ${d.rarity}`;
+            if(this.selectedCardIdx === i) el.classList.add('selected');
+            el.innerHTML = `<div class="cost">${d.cost}</div><div class="card-inner"><div class="emoji">${d.icon}</div></div>`;
+            el.onclick = () => {
+                document.querySelectorAll('#hand-cards .card').forEach(c=>c.classList.remove('selected'));
+                if(this.selectedCardIdx === i) this.selectedCardIdx = null;
+                else { this.selectedCardIdx = i; el.classList.add('selected'); }
+            };
+            container.appendChild(el);
+        });
+        document.getElementById('next-icon').innerText = DB.cards[this.nextCard].icon;
+    },
+    showMessage(msg) {
+        const m = document.getElementById('message'); m.innerText = msg; m.classList.add('show');
+        setTimeout(()=>m.classList.remove('show'), 1500);
+    },
+    endGame(win) {
+        this.running = false; clearInterval(this.timerInt);
+        document.getElementById('end-screen').classList.remove('hidden');
+        const title = document.getElementById('end-title');
+        if(win) {
+            title.innerText = "勝利!"; title.style.color = "#f1c40f";
+            Player.trophies += 30; Player.gold += 50;
+        } else {
+            title.innerText = "失敗"; title.style.color = "#e74c3c";
+            Player.trophies = Math.max(0, Player.trophies - 20); Player.gold += 10;
+        }
+    }
+};
+
+class Tower {
+    constructor(x, y, team, isKing) {
+        this.x=x; this.y=y; this.team=team; this.isKing=isKing;
+        this.hp=isKing?4000:2500; this.maxHp=this.hp; this.radius=isKing?30:25;
+        this.range=150; this.dmg=100; this.atkTimer=0; this.type='building'; this.speed=0;
+    }
+}
+
+window.onload = () => Game.init();
+</script>
+</body>
+</html>
