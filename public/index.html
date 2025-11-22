@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Clash Online</title>
+<title>Clash Online - 完整版</title>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
@@ -12,7 +12,7 @@
 :root {
     --primary: #3498db; --accent: #f1c40f; --danger: #e74c3c; --success: #2ecc71;
     --dark-bg: #1e272e; --ui-glass: rgba(30, 39, 46, 0.95);
-    --font-main: "PingFang TC", system-ui, sans-serif;
+    --font-main: "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
     --common: #bdc3c7; --rare: #f39c12; --epic: #9b59b6; --legendary: #00cec9;
     --gold: #ffd700; --gem: #2ecc71;
 }
@@ -24,7 +24,7 @@ body {
 }
 
 /* =========================================
-   遊戲層 (GAME VIEW) - 移植自原始版本
+   遊戲層 (GAME VIEW)
    ========================================= */
 #game-container { 
     position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
@@ -83,13 +83,11 @@ canvas { display: block; width: 100%; height: 100%; }
     display: flex; align-items: center; gap: 5px;
 }
 
-/* 文字特效 */
 #message { position: absolute; top: 30%; width: 100%; text-align: center; font-size: 48px; font-weight: 900; color: var(--accent); -webkit-text-stroke: 2px #000; text-shadow: 0 4px 15px rgba(0,0,0,0.6); pointer-events: none; opacity: 0; transition: all 0.3s; transform: scale(0.5); z-index: 50; }
 #message.show { opacity: 1; transform: scale(1); }
 #elixir-mode-txt { position: absolute; top: 20%; width: 100%; text-align: center; font-size: 32px; font-weight: 900; color: #e84393; text-shadow: 0 0 10px #fff, 0 0 20px #e84393; pointer-events: none; opacity: 0; transform: scale(1.5); transition: all 0.5s; z-index: 45; }
 #elixir-mode-txt.show { opacity: 1; transform: scale(1); }
 
-/* 表情系統 */
 #emote-wrapper { position: absolute; bottom: 170px; left: 15px; z-index: 30; display: flex; flex-direction: column-reverse; gap: 10px; }
 #emote-btn { width: 44px; height: 44px; background: rgba(0,0,0,0.6); border: 2px solid #fff; border-radius: 50%; font-size: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
 #emote-menu { background: rgba(0,0,0,0.8); border-radius: 12px; padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; opacity: 0; pointer-events: none; transform: scale(0.8) translateY(20px); transition: all 0.2s ease-out; }
@@ -97,7 +95,7 @@ canvas { display: block; width: 100%; height: 100%; }
 .emote-opt { font-size: 28px; cursor: pointer; }
 
 /* =========================================
-   大廳層 (LOBBY VIEW) - 現代化介面
+   大廳層 (LOBBY VIEW)
    ========================================= */
 #lobby-layer {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -106,7 +104,6 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 .hidden { display: none !important; }
 
-/* 頂部資源列 */
 #top-bar {
     height: 60px; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: space-between; padding: 0 15px;
     border-bottom: 1px solid rgba(255,255,255,0.1); box-sizing: border-box;
@@ -115,12 +112,10 @@ canvas { display: block; width: 100%; height: 100%; }
 .res-item { display: flex; align-items: center; gap: 5px; font-weight: bold; font-size: 14px; background: rgba(0,0,0,0.5); padding: 4px 10px; border-radius: 15px; }
 .icon-gold { color: var(--gold); } .icon-gem { color: var(--gem); } .icon-trophy { color: var(--accent); }
 
-/* 內容區 */
 #tab-content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px; position: relative; box-sizing: border-box; }
 .tab-pane { display: none; animation: fadeIn 0.3s; height: 100%; width: 100%; }
 .tab-pane.active { display: flex; flex-direction: column; align-items: center; }
 
-/* 底部導航 */
 #nav-bar {
     height: 70px; background: #1e272e; border-top: 1px solid rgba(255,255,255,0.1);
     display: flex; justify-content: space-around; align-items: center;
@@ -135,7 +130,6 @@ canvas { display: block; width: 100%; height: 100%; }
 .nav-btn.active { color: #fff; transform: translateY(-5px); }
 .nav-btn.active i { color: var(--primary); text-shadow: 0 0 10px var(--primary); }
 
-/* --- 大廳元件樣式 --- */
 .hero-banner { text-align: center; margin-top: 20px; margin-bottom: 30px; }
 .rank-badge { width: 100px; height: 100px; background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="%23f1c40f" d="M50 2 L90 25 L90 75 L50 98 L10 75 L10 25 Z"/></svg>') no-repeat center; background-size: contain; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 40px; filter: drop-shadow(0 0 10px rgba(241, 196, 15, 0.5)); }
 .arena-name { font-size: 24px; font-weight: bold; color: #fff; margin-top: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
@@ -152,7 +146,6 @@ canvas { display: block; width: 100%; height: 100%; }
 .btn-battle:active { transform: translateY(6px); box-shadow: 0 0 0 #d35400; }
 .btn-battle:disabled { filter: grayscale(1); transform: translateY(6px); box-shadow: 0 0 0 #555; cursor: not-allowed; }
 
-/* 牌組網格 */
 .deck-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; max-width: 500px; box-sizing: border-box; }
 .deck-card {
     aspect-ratio: 3/4; background: #34495e; border-radius: 8px; position: relative; border: 2px solid transparent; cursor: pointer;
@@ -165,7 +158,6 @@ canvas { display: block; width: 100%; height: 100%; }
 .progress-bar { width: 100%; height: 6px; background: #000; border-radius: 3px; margin: 5px 0; overflow: hidden; }
 .progress-fill { height: 100%; background: #2ecc71; width: 50%; }
 
-/* 社交列表 */
 .social-header { display: flex; gap: 10px; width: 100%; margin-bottom: 20px; }
 .tab-pill { flex: 1; background: rgba(255,255,255,0.1); padding: 10px; text-align: center; border-radius: 8px; cursor: pointer; }
 .tab-pill.active { background: var(--primary); font-weight: bold; }
@@ -177,7 +169,6 @@ canvas { display: block; width: 100%; height: 100%; }
 .btn-invite { background: #3498db; color: white; }
 .btn-spectate { background: #9b59b6; color: white; }
 
-/* 結算畫面 */
 #end-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(5px); }
 #end-screen.active { display: flex; }
 
@@ -357,30 +348,32 @@ canvas { display: block; width: 100%; height: 100%; }
 </div>
 
 <script>
-// --- 遊戲核心配置 (移植自原版) ---
 const CONFIG = {
     ELIXIR_RATE_BASE: 0.018, ELIXIR_MAX: 10, GAME_TIME: 180, DOUBLE_ELIXIR_THRESHOLD: 60,
     RIVER_OFFSET: 0.5, BRIDGE_WIDTH: 60,
     COLORS: { P_MAIN: '#3498db', E_MAIN: '#e74c3c', GRASS: '#27ae60', WATER: '#48dbfb' }
 };
 
-// 詳細卡牌數據 (移植自原版，用於戰鬥邏輯)
+// 完整的卡牌資料，包含視覺參數
 const CARDS = {
-    knight: { id: 'knight', name: '騎士', cost: 3, count: 1, hp: 1400, dmg: 130, speed: 0.35, range: 0, atkSpd: 65, type: 'ground', target: 'any', icon: '⚔️', radius: 16, mass: 6.0, deployTime: 60, rarity: 'common' },
-    archer: { id: 'archer', name: '弓箭手', cost: 3, count: 2, hp: 350, dmg: 80, speed: 0.4, range: 110, atkSpd: 50, type: 'ground', target: 'any', icon: '🏹', radius: 12, mass: 1.5, deployTime: 60, rarity: 'common' },
-    musketeer: { id: 'musketeer', name: '火槍手', cost: 4, count: 1, hp: 600, dmg: 180, speed: 0.35, range: 140, atkSpd: 60, type: 'ground', target: 'any', icon: '👒', radius: 14, mass: 2.0, deployTime: 60, rarity: 'rare' },
-    giant: { id: 'giant', name: '巨人', cost: 5, count: 1, hp: 3500, dmg: 250, speed: 0.2, range: 0, atkSpd: 120, type: 'ground', target: 'building', icon: '🦍', radius: 28, mass: 30.0, deployTime: 120, rarity: 'rare' },
-    prince: { id: 'prince', name: '王子', cost: 5, count: 1, hp: 1600, dmg: 325, speed: 0.35, range: 0, atkSpd: 80, type: 'ground', target: 'any', icon: '🐎', radius: 18, mass: 8.0, deployTime: 60, chargeSpeed: 0.75, chargeDmgMult: 2.0, rarity: 'epic' },
-    bats: { id: 'bats', name: '蝙蝠', cost: 2, count: 4, hp: 50, dmg: 50, speed: 0.7, range: 0, atkSpd: 25, type: 'air', target: 'any', icon: '🦇', radius: 8, mass: 0.5, deployTime: 30, rarity: 'common' },
-    minipekka: { id: 'minipekka', name: '迷你皮卡', cost: 4, count: 1, hp: 1100, dmg: 550, speed: 0.55, range: 0, atkSpd: 95, type: 'ground', target: 'any', icon: '🤖', radius: 16, mass: 5.0, deployTime: 60, rarity: 'rare' },
-    hogrider: { id: 'hogrider', name: '野豬騎士', cost: 4, count: 1, hp: 1400, dmg: 260, speed: 0.8, range: 0, atkSpd: 70, type: 'ground', target: 'building', icon: '🐷', radius: 18, mass: 5.0, deployTime: 60, rarity: 'rare' },
-    babydragon: { id: 'babydragon', name: '飛龍寶寶', cost: 4, count: 1, hp: 1000, dmg: 130, speed: 0.45, range: 90, atkSpd: 80, type: 'air', target: 'any', icon: '🐲', aoe: 50, radius: 16, mass: 4.0, deployTime: 60, rarity: 'epic' },
+    knight: { id: 'knight', name: '騎士', cost: 3, count: 1, hp: 1400, dmg: 130, speed: 0.6, range: 0, atkSpd: 65, type: 'ground', target: 'any', icon: '⚔️', radius: 16, mass: 6.0, deployTime: 60, rarity: 'common' },
+    archer: { id: 'archer', name: '弓箭手', cost: 3, count: 2, hp: 350, dmg: 80, speed: 0.7, range: 110, atkSpd: 50, type: 'ground', target: 'any', icon: '🏹', radius: 12, mass: 1.5, deployTime: 60, rarity: 'common' },
+    musketeer: { id: 'musketeer', name: '火槍手', cost: 4, count: 1, hp: 600, dmg: 180, speed: 0.6, range: 140, atkSpd: 60, type: 'ground', target: 'any', icon: '👒', radius: 14, mass: 2.0, deployTime: 60, rarity: 'rare' },
+    giant: { id: 'giant', name: '巨人', cost: 5, count: 1, hp: 3500, dmg: 250, speed: 0.4, range: 0, atkSpd: 120, type: 'ground', target: 'building', icon: '🦍', radius: 28, mass: 30.0, deployTime: 120, rarity: 'rare' },
+    prince: { id: 'prince', name: '王子', cost: 5, count: 1, hp: 1600, dmg: 325, speed: 0.7, range: 0, atkSpd: 80, type: 'ground', target: 'any', icon: '🐎', radius: 18, mass: 8.0, deployTime: 60, chargeSpeed: 1.5, chargeDmgMult: 2.0, rarity: 'epic' },
+    skarmy: { id: 'skarmy', name: '骷髏軍團', cost: 3, count: 10, hp: 60, dmg: 40, speed: 1.0, range: 0, atkSpd: 30, type: 'ground', target: 'any', icon: '💀', radius: 8, mass: 0.5, deployTime: 30, rarity: 'epic' },
+    bats: { id: 'bats', name: '蝙蝠', cost: 2, count: 4, hp: 50, dmg: 50, speed: 1.1, range: 0, atkSpd: 25, type: 'air', target: 'any', icon: '🦇', radius: 8, mass: 0.5, deployTime: 30, rarity: 'common' },
+    minipekka: { id: 'minipekka', name: '迷你皮卡', cost: 4, count: 1, hp: 1100, dmg: 550, speed: 1.0, range: 0, atkSpd: 95, type: 'ground', target: 'any', icon: '🤖', radius: 16, mass: 5.0, deployTime: 60, rarity: 'rare' },
+    hogrider: { id: 'hogrider', name: '野豬騎士', cost: 4, count: 1, hp: 1400, dmg: 260, speed: 1.4, range: 0, atkSpd: 70, type: 'ground', target: 'building', icon: '🐷', radius: 18, mass: 5.0, deployTime: 60, rarity: 'rare' },
+    babydragon: { id: 'babydragon', name: '飛龍寶寶', cost: 4, count: 1, hp: 1000, dmg: 130, speed: 0.8, range: 90, atkSpd: 80, type: 'air', target: 'any', icon: '🐲', aoe: 50, radius: 16, mass: 4.0, deployTime: 60, rarity: 'epic' },
     fireball: { id: 'fireball', name: '火球術', cost: 4, count: 1, hp: 0, dmg: 350, speed: 0, range: 0, atkSpd: 0, type: 'spell', target: 'any', icon: '🔥', aoe: 110, knockback: 8, rarity: 'rare' },
+    zap: { id: 'zap', name: '電擊法術', cost: 2, count: 1, hp: 0, dmg: 70, speed: 0, range: 0, atkSpd: 0, type: 'spell', target: 'any', icon: '⚡', aoe: 80, stun: 60, rarity: 'common' },
+    goblins: { id: 'goblins', name: '哥布林', cost: 2, count: 3, hp: 180, dmg: 90, speed: 1.1, range: 0, atkSpd: 35, type: 'ground', target: 'any', icon: '👺', radius: 10, mass: 0.8, deployTime: 10, rarity: 'common' },
+    barrel: { id: 'barrel', name: '哥布林飛桶', cost: 3, count: 1, hp: 0, dmg: 50, speed: 0, range: 0, atkSpd: 0, type: 'spell', target: 'any', icon: '🛢️', spawnUnit: 'goblins', knockback: 0, rarity: 'epic' },
 };
-// 為了相容大廳邏輯，建立 DB 對應
 const DB = { cards: CARDS };
 
-// 玩家存檔 (模擬)
+// 玩家存檔
 let Player = {
     name: "玩家1",
     gold: 150, gems: 20, trophies: 1000,
@@ -388,7 +381,7 @@ let Player = {
     collection: Object.keys(CARDS).reduce((acc, k) => { acc[k] = { level: 1, shards: 0, maxShards: 50 }; return acc; }, {})
 };
 
-// --- 輔助類別 (Helper Classes) ---
+// --- 粒子與物理系統 ---
 const AudioSys = {
     ctx: null,
     init() { window.AudioContext = window.AudioContext || window.webkitAudioContext; this.ctx = new AudioContext(); },
@@ -404,13 +397,13 @@ class Vector2 { constructor(x,y){this.x=x;this.y=y;} add(v){this.x+=v.x;this.y+=
 class ParticlePool { constructor(){this.pool=[];this.max=200;} get(x,y,c,t,v){let p=this.pool.find(i=>!i.active); if(!p){if(this.pool.length<this.max){p=new Particle();this.pool.push(p);}else return null;} p.reset(x,y,c,t,v); return p;} updateAndDraw(ctx){this.pool.forEach(p=>{if(p.active){p.update();p.draw(ctx);}});} clear(){this.pool.forEach(p=>p.active=false);} }
 class Particle { constructor(){this.active=false;this.pos=new Vector2(0,0);this.vel=new Vector2(0,0);} reset(x,y,c,t,v){this.active=true;this.pos.x=x;this.pos.y=y;this.type=t;this.color=c;this.life=1.0; if(t==='text'||t==='emote'){this.text=v;this.vel=new Vector2(0,t==='emote'?-0.8:-2.5);this.scale=t==='emote'?1:Math.min(2,0.8+v/200);}else if(t==='spawn_flash'){this.vel=new Vector2(0,0);this.size=10;}else if(t==='water_ripple'){this.vel=new Vector2(0.5,0);this.size=Math.random()*5+2;}else{this.vel=new Vector2((Math.random()-0.5)*3,(Math.random()-0.5)*3);this.size=Math.random()*4+2;}} update(){this.pos.add(this.vel);this.life-=0.03;if(this.life<=0)this.active=false;if(this.type==='spawn_flash')this.size+=2;} draw(ctx){if(!this.active)return;ctx.globalAlpha=Math.max(0,this.life); if(this.type==='emote'){ctx.font="30px sans-serif";ctx.fillText(this.text,this.pos.x,this.pos.y);}else if(this.type==='spawn_flash'){ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(this.pos.x,this.pos.y,this.size,0,Math.PI*2);ctx.fill();}else if(this.type==='water_ripple'){ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.arc(this.pos.x,this.pos.y,this.size,0,Math.PI*2);ctx.stroke();}else if(this.type==='text'){ctx.fillStyle=this.color;ctx.font="bold 16px sans-serif";ctx.fillText(this.text,this.pos.x,this.pos.y);}else{ctx.fillStyle=this.color;ctx.beginPath();ctx.arc(this.pos.x,this.pos.y,this.size,0,Math.PI*2);ctx.fill();} ctx.globalAlpha=1;} }
 
-// --- 實體類別 (Game Entities) ---
+// --- 實體類別 (Entities) ---
 class Entity {
-    constructor(x, y, team, radius) { this.pos=new Vector2(x,y); this.team=team; this.radius=radius; this.dead=false; this.hp=100; this.maxHp=100; this.flash=0; this.shakeX=0; this.shakeY=0; this.knockbackVel=new Vector2(0,0); }
+    constructor(x, y, team, radius) { this.pos=new Vector2(x,y); this.team=team; this.radius=radius; this.dead=false; this.hp=100; this.maxHp=100; this.flash=0; this.shakeX=0; this.shakeY=0; this.knockbackVel=new Vector2(0,0); this.stunTimer=0; }
     takeDamage(amt, isCrit=false) {
         this.hp-=amt; this.flash=5; this.shakeX=(Math.random()-0.5)*6; this.shakeY=(Math.random()-0.5)*6;
         Game.particles.get(this.pos.x, this.pos.y-30, '#fff', isCrit?'crit':'text', Math.floor(amt)+(isCrit?"!":""));
-        if(this.hp<=0) { this.dead=true; for(let i=0;i<3;i++) Game.particles.get(this.pos.x,this.pos.y,'#a55eea','soul',0); }
+        if(this.hp<=0) { this.dead=true; if(this.deathDmg) Game.projectiles.push(new Projectile(this.pos, new Vector2(0,0), this.deathDmg, 100, 'explosion', this.team)); for(let i=0;i<3;i++) Game.particles.get(this.pos.x,this.pos.y,'#a55eea','soul',0); }
     }
     drawHp(ctx, offset) {
         if(this.hp<this.maxHp && this.hp>0) {
@@ -436,6 +429,7 @@ class Unit extends Entity {
         this.shakeX*=0.8; this.shakeY*=0.8;
         if(this.knockbackVel.mag()>0.1) { this.pos.add(this.knockbackVel); this.knockbackVel.mult(0.85); this.collide(); return; }
         if(this.deployTimer>0) { this.deployTimer--; return; }
+        if(this.stunTimer>0) { this.stunTimer--; return; }
         this.frame++; if(this.flash>0) this.flash--; if(this.atkTimer>0) this.atkTimer--;
         
         const target = this.findTarget();
@@ -458,6 +452,7 @@ class Unit extends Entity {
     moveTowards(dest) {
         let target = dest.copy();
         const riverY = Game.height * CONFIG.RIVER_OFFSET;
+        // 橋樑尋路邏輯
         if(this.type!=='air' && ((this.pos.y<riverY && dest.y>riverY) || (this.pos.y>riverY && dest.y<riverY)) && Math.abs(this.pos.y-riverY)>20) {
             const bL = Game.width*0.25, bR = Game.width*0.75;
             const bridgeX = Math.abs(this.pos.x-bL)<Math.abs(this.pos.x-bR) ? bL : bR;
@@ -483,6 +478,7 @@ class Unit extends Entity {
         const list = this.targetType==='building' ? [...Game.towers, ...Game.units.filter(u=>u.type==='building')] : [...Game.towers, ...Game.units];
         let best = null, minD = Infinity;
         list.forEach(t => {
+            // 嚴格檢查隊伍，避免打自己人
             if(t.team!==this.team && !t.dead && t.deployTimer<=0) {
                 if(t instanceof Tower && t.isKing && !t.active && t.team!==this.team) return;
                 const d = this.pos.dist(t.pos); if(d<minD) { minD=d; best=t; }
@@ -514,7 +510,7 @@ class Unit extends Entity {
         const bob = Math.sin(this.frame*0.2)*2;
         ctx.translate(0, -bob); ctx.scale(this.facing, 1);
 
-        // --- 簡易繪製邏輯 (可替換為更複雜的Sprite) ---
+        // --- V1 特效繪製 ---
         if (this.key === 'giant') {
             ctx.fillStyle = '#d35400'; ctx.fillRect(-14, -28, 28, 28);
             ctx.fillStyle = '#e67e22'; ctx.beginPath(); ctx.arc(0, -34, 12, 0, Math.PI*2); ctx.fill();
@@ -540,12 +536,35 @@ class Unit extends Entity {
             ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(25, -2); ctx.lineTo(25, 2); ctx.fill();
             if (this.isCharging) { ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(0,-1,30,2); }
             ctx.restore();
+        } else if (this.key === 'minipekka') {
+            ctx.fillStyle = '#7f8c8d'; ctx.fillRect(-10,-20,20,20);
+            ctx.fillStyle = col; ctx.fillRect(-10,-15,20,5);
+            ctx.fillStyle = '#00ffff'; ctx.shadowBlur=5; ctx.shadowColor='#00ffff';
+            ctx.beginPath(); ctx.arc(0,-12,4,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+            ctx.fillStyle = '#7f8c8d'; ctx.beginPath(); ctx.moveTo(-10,-20); ctx.lineTo(-14,-28); ctx.lineTo(-6,-20); ctx.fill(); ctx.beginPath(); ctx.moveTo(10,-20); ctx.lineTo(14,-28); ctx.lineTo(6,-20); ctx.fill();
         } else if (this.key === 'hogrider') {
             ctx.fillStyle = '#8d6e63'; ctx.beginPath(); ctx.arc(0, -20, 8, 0, Math.PI*2); ctx.fill();
             ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, -20, 8, Math.PI, 0); ctx.fill();
             ctx.fillStyle = '#ff7675'; ctx.fillRect(-10, -15, 20, 15);
             ctx.fillStyle = '#634200'; ctx.beginPath(); ctx.ellipse(0, 0, 12, 8, 0, 0, Math.PI*2); ctx.fill();
             ctx.strokeStyle = '#dfe6e9'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(10,-15); ctx.lineTo(10,-25); ctx.stroke();
+        } else if (this.key === 'babydragon') {
+            ctx.fillStyle = '#00b894'; ctx.beginPath(); ctx.ellipse(0, 0, 12, 10, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#fdcb6e'; ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(-15, -15); ctx.lineTo(-5, 5); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(5, -5); ctx.lineTo(15, -15); ctx.lineTo(5, 5); ctx.fill();
+            ctx.fillStyle = '#00b894'; ctx.beginPath(); ctx.arc(0, -12, 8, 0, Math.PI*2); ctx.fill();
+        } else if (this.key === 'musketeer') {
+            ctx.fillStyle = '#9b59b6'; ctx.fillRect(-6, -18, 12, 18);
+            ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(0, -20, 8, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#333'; ctx.fillRect(6, -14, 14, 4);
+        } else if (this.key === 'bats') {
+            ctx.fillStyle = '#6c5ce7'; ctx.beginPath(); ctx.arc(0, -5, 6, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#2d3436'; ctx.beginPath(); ctx.moveTo(-5,-5); ctx.lineTo(-12,-12); ctx.lineTo(-5,0); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(5,-5); ctx.lineTo(12,-12); ctx.lineTo(5,0); ctx.fill();
+        } else if (this.key === 'goblins') {
+            ctx.fillStyle = '#55efc4'; ctx.beginPath(); ctx.arc(0,-5,8,0,Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(-6,-10); ctx.lineTo(-12,-18); ctx.lineTo(0,-10); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(6,-10); ctx.lineTo(12,-18); ctx.lineTo(0,-10); ctx.fill();
         } else {
             ctx.fillStyle = (this.key==='skarmy'?'#fff':col);
             ctx.beginPath(); ctx.arc(0, -5, this.radius-2, 0, Math.PI*2); ctx.fill();
@@ -568,6 +587,7 @@ class Tower extends Entity {
         if(!this.active) return;
         if(this.atkTimer>0) this.atkTimer--;
         let target = null, minD = this.range;
+        // 塔只打敵人
         Game.units.forEach(u => { if(u.team!==this.team && !u.dead && u.deployTimer<=0) { const d=this.pos.dist(u.pos); if(d<minD){minD=d; target=u;} } });
         if(target && this.atkTimer<=0) {
             Game.projectiles.push(new Projectile(new Vector2(this.pos.x, this.pos.y-(this.isKing?40:30)), target, this.isKing?120:90, 0, 'arrow', this.team));
@@ -612,12 +632,13 @@ class Projectile {
     update() {
         if(!this.isSpell && !this.target.dead) this.dest = this.target.pos.copy();
         const dToT = this.pos.dist(this.dest), travelled = this.pos.dist(this.startPos);
-        if(this.isSpell) this.height = Math.sin((travelled/(travelled+dToT))*Math.PI) * 120;
+        if(this.isSpell) this.height = Math.sin((travelled/(travelled+dToT))*Math.PI) * 120; // 拋物線
         
         if(dToT < this.speed+5 && this.height<15) {
             this.dead = true;
+            if(this.key==='barrel') { for(let i=0;i<3;i++) Game.units.push(new Unit(this.dest.x+(i-1)*10, this.dest.y, this.team, 'goblins')); AudioSys.play('boom'); return; }
             let targets = (this.aoe>0 || this.isSpell) ? [...Game.units, ...Game.towers].filter(e=>e.pos.dist(this.dest)<=this.aoe) : [this.target];
-            if(this.aoe>0) AudioSys.play('boom');
+            if(this.aoe>0) AudioSys.play(this.key==='zap'?'zap':'boom');
             targets.forEach(t => { if(t.team!==this.team){ t.takeDamage(this.dmg); if(this.key==='fireball') t.knockbackVel.add(t.pos.copy().sub(this.pos).normalize().mult(8)); } });
         } else {
             this.pos.add(this.dest.copy().sub(this.pos).normalize().mult(this.speed));
@@ -639,7 +660,6 @@ class Projectile {
         ctx.restore();
     }
 }
-
 
 // --- Lobby Logic (大廳邏輯) ---
 const Lobby = {
@@ -680,7 +700,6 @@ const Lobby = {
             const equipped = Player.deck.includes(key) ? 'equipped' : '';
             const canUpgrade = data.shards >= data.maxShards && Player.gold >= 50;
             const arrow = canUpgrade ? `<div class="upgrade-arrow">⬆</div>` : '';
-            
             el.className = `deck-card card ${card.rarity} ${equipped}`;
             el.innerHTML = `${arrow}<div class="cost">${card.cost}</div><div class="card-inner"><div class="emoji">${card.icon}</div></div><div class="lv-badge">Lv.${data.level}</div>`;
             el.onclick = () => this.selectCardForUpgrade(key);
@@ -692,16 +711,13 @@ const Lobby = {
         const data = Player.collection[key];
         const panel = document.getElementById('upgrade-panel');
         const btn = document.getElementById('btn-upgrade');
-        
         panel.classList.add('active');
         document.getElementById('upg-icon').innerText = card.icon;
         document.getElementById('upg-name').innerText = card.name;
         document.getElementById('upg-level').innerText = `等級 ${data.level}`;
         document.getElementById('upg-count').innerText = `${data.shards}/${data.maxShards}`;
-        
         const pct = Math.min(100, (data.shards / data.maxShards) * 100);
         document.getElementById('upg-bar').style.width = `${pct}%`;
-        
         if (data.shards >= data.maxShards && Player.gold >= 50) {
             btn.style.background = '#2ecc71'; btn.disabled = false;
             btn.onclick = () => {
@@ -734,7 +750,7 @@ const Lobby = {
     }
 };
 
-// --- Game Logic (戰鬥邏輯 - 整合) ---
+// --- Game Logic (戰鬥邏輯) ---
 const Game = {
     canvas: null, ctx: null, width: 0, height: 0, running: false,
     units: [], towers: [], projectiles: [], particles: new ParticlePool(),
@@ -745,33 +761,19 @@ const Game = {
     init() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
-        
-        // 綁定拖曳/點擊事件
-        const wrapper = document.getElementById('canvas-wrapper');
         const container = document.getElementById('game-container');
-        
-        // 使用原生 Pointer Event 支援手機與滑鼠
         container.onpointerdown = e => this.pDown(e);
         container.onpointermove = e => this.pMove(e);
         container.onpointerup = e => this.pUp(e);
-
         AudioSys.init();
         Lobby.init();
     },
 
-    // 切換畫面並計算尺寸
     activateGameView() {
         document.getElementById('lobby-layer').style.display = 'none';
         const container = document.getElementById('game-container');
         container.classList.add('active'); 
-        
-        // 強制等待 DOM 渲染後再 resize
-        setTimeout(() => {
-            this.resize();
-            this.canvas.width = this.width;
-            this.canvas.height = this.height;
-        }, 50);
-        
+        setTimeout(() => { this.resize(); this.canvas.width = this.width; this.canvas.height = this.height; }, 50);
         window.addEventListener('resize', () => this.resize());
     },
 
@@ -779,27 +781,25 @@ const Game = {
 
     startMatchmaking() {
         if(!this.socket) this.socket = io();
-        
         this.socket.emit('find_match', { trophies: Player.trophies });
-
         this.socket.on('game_start', (data) => {
             this.roomID = data.roomID;
             this.showMessage("配對成功！");
             document.getElementById('enemy-name-txt').innerText = "挑戰者";
             setTimeout(() => this.startGame(), 1000);
         });
-
         this.socket.on('no_match_found', () => {
             this.roomID = 'local_bot';
             this.showMessage("訓練師來襲！");
             document.getElementById('enemy-name-txt').innerText = "訓練師 AI";
             setTimeout(() => this.startGame(), 1000);
         });
-
         this.socket.on('remote_action', (data) => {
             if(data.type === 'spawn') {
+                // 鏡像轉換
                 const realX = (1 - data.nx) * this.width;
                 const realY = (1 - data.ny) * this.height;
+                // 關鍵修復：設置 fromRemote 為 true
                 this.spawn(data.card, realX, realY, 'enemy', true);
             } else if (data.type === 'emote') {
                 this.showEmote(data.val, 'enemy');
@@ -813,21 +813,19 @@ const Game = {
         this.elixir = 5;
         this.units = []; this.projectiles = []; this.particles.clear();
         
-        // 初始化塔
-        const pY = this.height - 100, eY = 100;
+        // 動態生成塔的位置，防止跑版
+        const pY = this.height - 120, eY = 120;
         const bL = this.width * 0.25, bR = this.width * 0.75;
         this.towers = [
             new Tower(bL, pY, 'player', false), new Tower(bR, pY, 'player', false), new Tower(this.width/2, pY+40, 'player', true),
             new Tower(bL, eY, 'enemy', false), new Tower(bR, eY, 'enemy', false), new Tower(this.width/2, eY-40, 'enemy', true)
         ];
 
-        // 手牌
         let deck = [...Player.deck, ...Player.deck].sort(()=>Math.random()-0.5);
         this.hand = deck.slice(0,4);
         this.nextCard = deck[4];
         this.renderDeck();
 
-        // 計時器
         let timeLeft = CONFIG.GAME_TIME;
         const timerEl = document.getElementById('timer');
         this.timerInt = setInterval(() => {
@@ -842,7 +840,6 @@ const Game = {
             if(timeLeft <= 0) this.endGame(null);
         }, 1000);
 
-        // AI
         if(this.roomID === 'local_bot') {
             setInterval(() => {
                 if(!this.running) return;
@@ -852,29 +849,23 @@ const Game = {
                 this.spawn(k, x, 80, 'enemy', true);
             }, 4000);
         }
-
         this.loop();
     },
 
     loop() {
         if(!this.running) return;
         requestAnimationFrame(() => this.loop());
-        
         this.elixir = Math.min(CONFIG.ELIXIR_MAX, this.elixir + CONFIG.ELIXIR_RATE_BASE);
         this.renderElixir();
-        
         if(Math.random()<0.05) Game.particles.get(Math.random()*this.width, this.height*0.5+(Math.random()-0.5)*20, null, 'water_ripple', 0);
-
         [...this.units, ...this.towers, ...this.projectiles].forEach(e => e.update());
         this.particles.updateAndDraw(this.ctx);
         this.units = this.units.filter(u => !u.dead);
         this.projectiles = this.projectiles.filter(p => !p.dead);
         this.towers = this.towers.filter(t => !t.dead);
-
         const pK = this.towers.find(t=>t.team==='player'&&t.isKing);
         const eK = this.towers.find(t=>t.team==='enemy'&&t.isKing);
         if(!pK) this.endGame(false); else if(!eK) this.endGame(true);
-
         this.draw();
     },
 
@@ -882,17 +873,13 @@ const Game = {
         const ctx = this.ctx;
         if(this.width === 0) return;
         ctx.clearRect(0,0,this.width,this.height);
-        
-        // Map
         ctx.fillStyle = CONFIG.COLORS.GRASS; ctx.fillRect(0,0,this.width,this.height);
         ctx.fillStyle = 'rgba(0,0,0,0.03)'; const size = 40;
         for(let x=0; x<this.width; x+=size) for(let y=0; y<this.height; y+=size) if((x/size + y/size)%2===0) ctx.fillRect(x, y, size, size);
-        
         const ry = this.height*CONFIG.RIVER_OFFSET;
         ctx.fillStyle = CONFIG.COLORS.WATER; ctx.fillRect(0, ry-30, this.width, 60);
         ctx.fillStyle = 'rgba(255,255,255,0.2)'; const t = Date.now()/500;
         for(let y=ry-25; y<ry+25; y+=8) { const s = Math.sin(y*0.1 + t)*10; ctx.fillRect(0, y, this.width, 2); }
-
         const drawBridge = (bx) => {
             ctx.fillStyle = '#636e72'; ctx.fillRect(bx-30, ry-35, 60, 70);
             ctx.fillStyle = '#b2bec3'; ctx.fillRect(bx-26, ry-35, 52, 70);
@@ -900,13 +887,9 @@ const Game = {
             ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(bx-26, ry+35, 52, 5);
         };
         drawBridge(this.width*0.25); drawBridge(this.width*0.75);
-
-        // Entities
         this.units.forEach(u=>u.drawShadow(ctx)); this.towers.forEach(t=>t.drawShadow(ctx));
         [...this.towers, ...this.units].sort((a,b)=>a.pos.y-b.pos.y).forEach(e=>e.draw(ctx));
         this.projectiles.forEach(p=>p.draw(ctx));
-        
-        // Dragging Visual
         if(this.isDragging) {
             const d = CARDS[this.hand[this.draggingIdx]];
             const valid = d.type==='spell' || this.dragPos.y > this.height*CONFIG.RIVER_OFFSET;
@@ -918,7 +901,6 @@ const Game = {
         }
     },
 
-    // --- 輸入控制 (拖曳與點擊) ---
     pDown(e) {
         if(!this.running) return;
         const t = e.target.closest('.card');
@@ -931,7 +913,6 @@ const Game = {
                 this.renderDeck();
             }
         } else if (this.selectedIdx !== null && !this.isDragging) {
-            // 點擊施放
             const y = e.clientY - rect.top;
             if(y < this.height) this.trySpawn(this.selectedIdx, e.clientX-rect.left, y);
         }
@@ -953,10 +934,8 @@ const Game = {
         const d = CARDS[key];
         const riverY = this.height * CONFIG.RIVER_OFFSET;
         if(d.type!=='spell' && y < riverY) { this.showMessage("僅能部署於己方區域"); return; }
-        
         this.elixir -= d.cost;
         this.spawn(key, x, y, 'player');
-        
         if(this.socket && this.roomID !== 'local_bot') {
             this.socket.emit('action', {
                 roomID: this.roomID, type: 'spawn', card: key,
@@ -972,7 +951,8 @@ const Game = {
         const d = CARDS[key];
         AudioSys.play('spawn');
         if(d.type==='spell') {
-            Game.projectiles.push(new Projectile(new Vector2(this.width/2, team==='player'?this.height:0), new Vector2(x,y), d.dmg, d.aoe, key, team));
+            // fromRemote 時，法術是從頂部飛過來的
+            this.projectiles.push(new Projectile(new Vector2(fromRemote?x:this.width/2, fromRemote?0:this.height), new Vector2(x,y), d.dmg, d.aoe, key, team));
         } else {
             const count = d.count || 1;
             for(let i=0; i<count; i++) {
@@ -1007,7 +987,7 @@ const Game = {
             const d=CARDS[k], el=document.createElement('div');
             el.className=`card ${d.rarity}`; el.dataset.index=i;
             if(this.selectedIdx===i && !this.isDragging) el.classList.add('selected');
-            if(this.draggingIdx===i) el.classList.add('dragging'); // 自定義樣式
+            if(this.draggingIdx===i) el.classList.add('dragging');
             el.innerHTML=`<div class="cost">${d.cost}</div><div class="card-inner"><div class="emoji">${d.icon}</div></div>`;
             h.appendChild(el);
         });
@@ -1020,8 +1000,8 @@ const Game = {
     endGame(win) {
         this.running = false; clearInterval(this.timerInt);
         document.getElementById('end-screen').classList.remove('hidden');
+        document.getElementById('end-screen').classList.add('active');
         const title = document.getElementById('end-title');
-        document.getElementById('end-screen').classList.add('active'); // Show flex
         if(win) {
             title.innerText = "勝利!"; title.style.color = "#f1c40f";
             Player.trophies += 30; Player.gold += 50;
