@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Clash Online</title>
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
 <style>
-/* --- 1. 核心變數與全域設定 --- */
+/* --- 1. 全域變數 --- */
 :root {
     --primary: #3498db; --accent: #f1c40f; --danger: #e74c3c; --success: #2ecc71;
     --dark-bg: #1e272e; --ui-glass: rgba(30, 39, 46, 0.95);
@@ -21,56 +23,90 @@ body {
     user-select: none; touch-action: none; position: fixed;
 }
 
-/* --- 遊戲層 (戰鬥畫面) --- */
+/* =========================================
+   遊戲層 (GAME VIEW) - 移植自原始版本
+   ========================================= */
 #game-container { 
     position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-    display: none; /* 預設隱藏，等配對成功再顯示 */
-    flex-direction: column; z-index: 1; 
+    display: none; flex-direction: column; z-index: 1; 
 }
-/* 顯示時要用 flex */
 #game-container.active { display: flex; }
 
-#canvas-wrapper { position: relative; flex: 1; width: 100%; background: #2c3e50; overflow: hidden; }
+#canvas-wrapper { position: relative; flex: 1; width: 100%; background: #2c3e50; overflow: hidden; box-shadow: inset 0 -20px 50px rgba(0,0,0,0.5); }
 canvas { display: block; width: 100%; height: 100%; }
 
-/* --- 戰鬥 UI --- */
-#ui-layer { height: 160px; background: var(--ui-glass); border-top: 1px solid rgba(255,255,255,0.15); display: flex; flex-direction: column; padding: 5px 10px; z-index: 20; position: relative; box-sizing: border-box; }
-#elixir-area { display: flex; align-items: center; gap: 10px; height: 30px; margin-bottom: 5px; }
-#elixir-badge { width: 30px; height: 30px; background: #a55eea; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 2px solid #fff; z-index: 5; }
-#elixir-bar-bg { flex: 1; height: 12px; background: #000; border-radius: 10px; border: 2px solid #57606f; position: relative; overflow: hidden; }
-#elixir-fill { height: 100%; width: 0%; background: #d980fa; transition: width 0.1s linear; }
-#deck-area { display: flex; gap: 8px; height: 100%; flex: 1; overflow: hidden; }
-#hand-cards { display: flex; gap: 6px; flex: 1; justify-content: space-between; }
-#next-slot { width: 45px; background: rgba(0,0,0,0.3); border-radius: 10px; display: flex; flex-direction: column; align-items: center; padding: 4px; flex-shrink: 0; }
-
-.card {
-    flex: 1; max-width: 85px; height: 90%; background: #2c3e50; border-radius: 10px;
-    border: 2px solid #57606f; position: relative; overflow: hidden; transition: transform 0.1s;
+/* 戰鬥 UI */
+#ui-layer {
+    height: 160px; background: var(--ui-glass); backdrop-filter: blur(15px);
+    border-top: 1px solid rgba(255,255,255,0.15); display: flex; flex-direction: column;
+    padding: 5px 10px 10px 10px; box-sizing: border-box; z-index: 20; position: relative;
 }
-.card.common { border-color: var(--common); } .card.rare { border-color: var(--rare); } 
-.card.epic { border-color: var(--epic); } .card.legendary { border-color: var(--legendary); }
-.card.selected { transform: translateY(-12px); border-color: #fff; box-shadow: 0 0 15px rgba(255,255,255,0.5); z-index: 10; }
-.card.disabled { filter: grayscale(1) brightness(0.5); }
-.cost { position: absolute; top: 0; left: 0; background: #fff; color: #8854d0; width: 18px; height: 18px; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 8px; z-index: 2; }
-.card-inner { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 10px; }
-.emoji { font-size: 28px; }
 
-/* HUD & Overlays */
-#hud-top { position: absolute; top: 0; left: 0; width: 100%; padding: 10px; display: flex; justify-content: space-between; pointer-events: none; z-index: 15; box-sizing: border-box; }
-#timer-box { background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); }
-#enemy-info { background: rgba(231,76,60,0.8); padding: 5px 12px; border-radius: 12px; border: 2px solid #fff; pointer-events: auto; display: flex; align-items: center; gap: 5px; font-weight: bold; }
-#message { position: absolute; top: 30%; width: 100%; text-align: center; font-size: 48px; font-weight: 900; color: var(--accent); text-shadow: 0 4px 15px rgba(0,0,0,0.6); opacity: 0; transition: 0.3s; transform: scale(0.5); z-index: 50; pointer-events: none; }
+/* 聖水條 */
+#elixir-area { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; padding: 0 5px; height: 30px; }
+#elixir-badge { width: 30px; height: 30px; background: linear-gradient(135deg, #a55eea, #8854d0); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; box-shadow: 0 0 15px rgba(165, 94, 234, 0.6); border: 2px solid #fff; z-index: 2; }
+#elixir-bar-bg { flex: 1; height: 12px; background: rgba(0,0,0,0.8); border-radius: 10px; overflow: hidden; position: relative; border: 2px solid #57606f; }
+#elixir-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #a55eea, #d980fa); box-shadow: 0 0 20px #a55eea; transition: width 0.1s linear; }
+
+/* 手牌區 */
+#deck-area { display: flex; align-items: flex-end; gap: 8px; height: 100%; flex: 1; width: 100%; }
+#next-slot { display: flex; flex-direction: column; align-items: center; opacity: 0.7; margin-right: 4px; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 4px; width: 45px; flex-shrink: 0; }
+.slot-label { font-size: 9px; color: #aaa; font-weight: 800; margin-bottom: 2px; }
+#hand-cards { display: flex; gap: 6px; justify-content: space-between; flex: 1; height: 100%; }
+
+/* 卡牌樣式 */
+.card {
+    flex: 1; max-width: 85px; height: 90%;
+    background: linear-gradient(160deg, #3d4c53, #2c3e50);
+    border-radius: 10px; position: relative; cursor: pointer;
+    transition: transform 0.1s; border: 2px solid #57606f;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.3); overflow: hidden; user-select: none;
+}
+.card.common { border-color: var(--common); } .card.rare { border-color: var(--rare); } .card.epic { border-color: var(--epic); } .card.legendary { border-color: var(--legendary); }
+.card-inner { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 10px; background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%); }
+.card.selected { transform: translateY(-12px); border-width: 3px; box-shadow: 0 0 20px rgba(255, 255, 255, 0.4); background: linear-gradient(160deg, #576574, #3d4c53); z-index: 10; }
+.card.disabled { filter: grayscale(1) brightness(0.5); pointer-events: none; transform: none; }
+.cost { position: absolute; top: -1px; left: -1px; width: 20px; height: 20px; background: #fff; color: #8854d0; border-bottom-right-radius: 10px; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 1px 1px 3px rgba(0,0,0,0.3); z-index: 2; border: 2px solid #8854d0; }
+.emoji { font-size: 28px; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.3)); margin-bottom: 2px; }
+
+/* HUD Top */
+#hud-top { position: absolute; top: 0; left: 0; width: 100%; padding: 10px 15px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 15; }
+#timer-box { background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); margin: 0 auto; }
+#timer { font-size: 24px; font-weight: 900; color: #fff; font-variant-numeric: tabular-nums; }
+#enemy-info {
+    position: absolute; top: 15px; left: 15px;
+    background: rgba(231, 76, 60, 0.8); padding: 6px 14px;
+    border-radius: 12px; border: 2px solid #fff;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    color: white; font-weight: bold; font-size: 16px;
+    text-shadow: 0 2px 2px rgba(0,0,0,0.5); pointer-events: auto;
+    display: flex; align-items: center; gap: 5px;
+}
+
+/* 文字特效 */
+#message { position: absolute; top: 30%; width: 100%; text-align: center; font-size: 48px; font-weight: 900; color: var(--accent); -webkit-text-stroke: 2px #000; text-shadow: 0 4px 15px rgba(0,0,0,0.6); pointer-events: none; opacity: 0; transition: all 0.3s; transform: scale(0.5); z-index: 50; }
 #message.show { opacity: 1; transform: scale(1); }
-.hidden { display: none !important; }
+#elixir-mode-txt { position: absolute; top: 20%; width: 100%; text-align: center; font-size: 32px; font-weight: 900; color: #e84393; text-shadow: 0 0 10px #fff, 0 0 20px #e84393; pointer-events: none; opacity: 0; transform: scale(1.5); transition: all 0.5s; z-index: 45; }
+#elixir-mode-txt.show { opacity: 1; transform: scale(1); }
 
-/* --- 全新大廳系統 (Lobby System) --- */
+/* 表情系統 */
+#emote-wrapper { position: absolute; bottom: 170px; left: 15px; z-index: 30; display: flex; flex-direction: column-reverse; gap: 10px; }
+#emote-btn { width: 44px; height: 44px; background: rgba(0,0,0,0.6); border: 2px solid #fff; border-radius: 50%; font-size: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+#emote-menu { background: rgba(0,0,0,0.8); border-radius: 12px; padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; opacity: 0; pointer-events: none; transform: scale(0.8) translateY(20px); transition: all 0.2s ease-out; }
+#emote-menu.open { opacity: 1; pointer-events: auto; transform: scale(1) translateY(0); }
+.emote-opt { font-size: 28px; cursor: pointer; }
+
+/* =========================================
+   大廳層 (LOBBY VIEW) - 現代化介面
+   ========================================= */
 #lobby-layer {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background: linear-gradient(135deg, #130f40, #30336b);
     z-index: 100; display: flex; flex-direction: column;
 }
+.hidden { display: none !important; }
 
-/* 資源列 */
+/* 頂部資源列 */
 #top-bar {
     height: 60px; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: space-between; padding: 0 15px;
     border-bottom: 1px solid rgba(255,255,255,0.1); box-sizing: border-box;
@@ -99,7 +135,7 @@ canvas { display: block; width: 100%; height: 100%; }
 .nav-btn.active { color: #fff; transform: translateY(-5px); }
 .nav-btn.active i { color: var(--primary); text-shadow: 0 0 10px var(--primary); }
 
-/* --- 分頁樣式 --- */
+/* --- 大廳元件樣式 --- */
 .hero-banner { text-align: center; margin-top: 20px; margin-bottom: 30px; }
 .rank-badge { width: 100px; height: 100px; background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="%23f1c40f" d="M50 2 L90 25 L90 75 L50 98 L10 75 L10 25 Z"/></svg>') no-repeat center; background-size: contain; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 40px; filter: drop-shadow(0 0 10px rgba(241, 196, 15, 0.5)); }
 .arena-name { font-size: 24px; font-weight: bold; color: #fff; margin-top: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
@@ -116,7 +152,7 @@ canvas { display: block; width: 100%; height: 100%; }
 .btn-battle:active { transform: translateY(6px); box-shadow: 0 0 0 #d35400; }
 .btn-battle:disabled { filter: grayscale(1); transform: translateY(6px); box-shadow: 0 0 0 #555; cursor: not-allowed; }
 
-/* Deck Grid */
+/* 牌組網格 */
 .deck-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; max-width: 500px; box-sizing: border-box; }
 .deck-card {
     aspect-ratio: 3/4; background: #34495e; border-radius: 8px; position: relative; border: 2px solid transparent; cursor: pointer;
@@ -129,7 +165,7 @@ canvas { display: block; width: 100%; height: 100%; }
 .progress-bar { width: 100%; height: 6px; background: #000; border-radius: 3px; margin: 5px 0; overflow: hidden; }
 .progress-fill { height: 100%; background: #2ecc71; width: 50%; }
 
-/* Social */
+/* 社交列表 */
 .social-header { display: flex; gap: 10px; width: 100%; margin-bottom: 20px; }
 .tab-pill { flex: 1; background: rgba(255,255,255,0.1); padding: 10px; text-align: center; border-radius: 8px; cursor: pointer; }
 .tab-pill.active { background: var(--primary); font-weight: bold; }
@@ -141,10 +177,13 @@ canvas { display: block; width: 100%; height: 100%; }
 .btn-invite { background: #3498db; color: white; }
 .btn-spectate { background: #9b59b6; color: white; }
 
+/* 結算畫面 */
+#end-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(5px); }
+#end-screen.active { display: flex; }
+
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(165, 94, 234, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(165, 94, 234, 0); } 100% { box-shadow: 0 0 0 0 rgba(165, 94, 234, 0); } }
-
 </style>
 </head>
 <body>
@@ -277,6 +316,16 @@ canvas { display: block; width: 100%; height: 100%; }
             <div id="enemy-info">⚔️ <span id="enemy-name-txt">對手</span></div>
             <div id="timer-box"><div id="timer">03:00</div></div>
         </div>
+        <div id="emote-wrapper">
+            <div id="emote-menu">
+                <div class="emote-opt" onclick="Game.triggerEmote('😂')">😂</div>
+                <div class="emote-opt" onclick="Game.triggerEmote('😡')">😡</div>
+                <div class="emote-opt" onclick="Game.triggerEmote('😭')">😭</div>
+                <div class="emote-opt" onclick="Game.triggerEmote('👍')">👍</div>
+            </div>
+            <div id="emote-btn" onclick="document.getElementById('emote-menu').classList.toggle('open')">💬</div>
+        </div>
+        <div id="elixir-mode-txt">雙倍聖水時刻!</div>
         <div id="message"></div>
     </div>
     <div id="ui-layer">
@@ -285,12 +334,19 @@ canvas { display: block; width: 100%; height: 100%; }
             <div id="elixir-bar-bg"><div id="elixir-fill"></div></div>
         </div>
         <div id="deck-area">
-            <div id="next-slot"><span style="font-size:9px;color:#aaa;">下張</span><div class="emoji" id="next-icon" style="font-size:20px">?</div></div>
+            <div id="next-slot">
+                <span class="slot-label">下張</span>
+                <div class="card" style="height: 60px; width: 100%; max-width: 50px; cursor: default; pointer-events: none;">
+                    <div class="card-inner" style="padding-top: 5px;">
+                        <div class="emoji" id="next-icon" style="font-size: 20px;">?</div>
+                    </div>
+                </div>
+            </div>
             <div id="hand-cards"></div>
         </div>
     </div>
     <!-- 結算畫面 -->
-    <div id="end-screen" class="hidden" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:200;">
+    <div id="end-screen">
         <h1 id="end-title" style="font-size:60px; margin:0;">勝利</h1>
         <div style="font-size:20px; margin-bottom:20px; display:flex; align-items:center; gap:10px;">
             <span id="end-trophy-change" style="color:var(--accent)">+30 🏆</span>
@@ -301,43 +357,291 @@ canvas { display: block; width: 100%; height: 100%; }
 </div>
 
 <script>
-// --- 配置與資料庫 ---
+// --- 遊戲核心配置 (移植自原版) ---
 const CONFIG = {
-    ELIXIR_RATE: 0.018, ELIXIR_MAX: 10, 
-    COLORS: { P_MAIN: '#3498db', E_MAIN: '#e74c3c' }
+    ELIXIR_RATE_BASE: 0.018, ELIXIR_MAX: 10, GAME_TIME: 180, DOUBLE_ELIXIR_THRESHOLD: 60,
+    RIVER_OFFSET: 0.5, BRIDGE_WIDTH: 60,
+    COLORS: { P_MAIN: '#3498db', E_MAIN: '#e74c3c', GRASS: '#27ae60', WATER: '#48dbfb' }
 };
 
-const DB = {
-    cards: {
-        knight: { name: '騎士', cost: 3, icon: '⚔️', rarity: 'common', hp: 1400, dmg: 130, speed: 0.6, type: 'ground', range: 30 },
-        archer: { name: '弓箭手', cost: 3, icon: '🏹', rarity: 'common', hp: 350, dmg: 80, speed: 0.7, type: 'ground', count: 2, range: 120 },
-        giant: { name: '巨人', cost: 5, icon: '🦍', rarity: 'rare', hp: 3500, dmg: 250, speed: 0.4, type: 'ground', target: 'building', range: 30 },
-        fireball: { name: '火球術', cost: 4, icon: '🔥', rarity: 'rare', type: 'spell', dmg: 350, aoe: 100 },
-        musketeer: { name: '火槍手', cost: 4, icon: '👒', rarity: 'rare', hp: 600, dmg: 180, speed: 0.6, type: 'ground', range: 150 },
-        bats: { name: '蝙蝠', cost: 2, icon: '🦇', rarity: 'common', hp: 50, dmg: 50, speed: 1.0, type: 'air', count: 4, range: 20 },
-        hogrider: { name: '野豬騎士', cost: 4, icon: '🐷', rarity: 'rare', hp: 1400, dmg: 260, speed: 1.2, type: 'ground', target: 'building', range: 20 },
-        prince: { name: '王子', cost: 5, icon: '🐎', rarity: 'epic', hp: 1600, dmg: 325, speed: 0.8, type: 'ground', charge: true, range: 30 }
-    }
+// 詳細卡牌數據 (移植自原版，用於戰鬥邏輯)
+const CARDS = {
+    knight: { id: 'knight', name: '騎士', cost: 3, count: 1, hp: 1400, dmg: 130, speed: 0.35, range: 0, atkSpd: 65, type: 'ground', target: 'any', icon: '⚔️', radius: 16, mass: 6.0, deployTime: 60, rarity: 'common' },
+    archer: { id: 'archer', name: '弓箭手', cost: 3, count: 2, hp: 350, dmg: 80, speed: 0.4, range: 110, atkSpd: 50, type: 'ground', target: 'any', icon: '🏹', radius: 12, mass: 1.5, deployTime: 60, rarity: 'common' },
+    musketeer: { id: 'musketeer', name: '火槍手', cost: 4, count: 1, hp: 600, dmg: 180, speed: 0.35, range: 140, atkSpd: 60, type: 'ground', target: 'any', icon: '👒', radius: 14, mass: 2.0, deployTime: 60, rarity: 'rare' },
+    giant: { id: 'giant', name: '巨人', cost: 5, count: 1, hp: 3500, dmg: 250, speed: 0.2, range: 0, atkSpd: 120, type: 'ground', target: 'building', icon: '🦍', radius: 28, mass: 30.0, deployTime: 120, rarity: 'rare' },
+    prince: { id: 'prince', name: '王子', cost: 5, count: 1, hp: 1600, dmg: 325, speed: 0.35, range: 0, atkSpd: 80, type: 'ground', target: 'any', icon: '🐎', radius: 18, mass: 8.0, deployTime: 60, chargeSpeed: 0.75, chargeDmgMult: 2.0, rarity: 'epic' },
+    bats: { id: 'bats', name: '蝙蝠', cost: 2, count: 4, hp: 50, dmg: 50, speed: 0.7, range: 0, atkSpd: 25, type: 'air', target: 'any', icon: '🦇', radius: 8, mass: 0.5, deployTime: 30, rarity: 'common' },
+    minipekka: { id: 'minipekka', name: '迷你皮卡', cost: 4, count: 1, hp: 1100, dmg: 550, speed: 0.55, range: 0, atkSpd: 95, type: 'ground', target: 'any', icon: '🤖', radius: 16, mass: 5.0, deployTime: 60, rarity: 'rare' },
+    hogrider: { id: 'hogrider', name: '野豬騎士', cost: 4, count: 1, hp: 1400, dmg: 260, speed: 0.8, range: 0, atkSpd: 70, type: 'ground', target: 'building', icon: '🐷', radius: 18, mass: 5.0, deployTime: 60, rarity: 'rare' },
+    babydragon: { id: 'babydragon', name: '飛龍寶寶', cost: 4, count: 1, hp: 1000, dmg: 130, speed: 0.45, range: 90, atkSpd: 80, type: 'air', target: 'any', icon: '🐲', aoe: 50, radius: 16, mass: 4.0, deployTime: 60, rarity: 'epic' },
+    fireball: { id: 'fireball', name: '火球術', cost: 4, count: 1, hp: 0, dmg: 350, speed: 0, range: 0, atkSpd: 0, type: 'spell', target: 'any', icon: '🔥', aoe: 110, knockback: 8, rarity: 'rare' },
 };
+// 為了相容大廳邏輯，建立 DB 對應
+const DB = { cards: CARDS };
 
 // 玩家存檔 (模擬)
 let Player = {
     name: "玩家1",
     gold: 150, gems: 20, trophies: 1000,
     deck: ['knight', 'archer', 'giant', 'fireball', 'musketeer', 'bats'],
-    collection: {
-        knight: { level: 1, shards: 50, maxShards: 50 },
-        archer: { level: 1, shards: 10, maxShards: 50 },
-        giant: { level: 2, shards: 2, maxShards: 20 },
-        fireball: { level: 1, shards: 0, maxShards: 20 },
-        musketeer: { level: 1, shards: 5, maxShards: 20 },
-        bats: { level: 3, shards: 80, maxShards: 100 },
-        hogrider: { level: 1, shards: 0, maxShards: 20 },
-        prince: { level: 1, shards: 0, maxShards: 10 }
-    }
+    collection: Object.keys(CARDS).reduce((acc, k) => { acc[k] = { level: 1, shards: 0, maxShards: 50 }; return acc; }, {})
 };
 
-// --- Lobby Logic ---
+// --- 輔助類別 (Helper Classes) ---
+const AudioSys = {
+    ctx: null,
+    init() { window.AudioContext = window.AudioContext || window.webkitAudioContext; this.ctx = new AudioContext(); },
+    play(type) {
+        if(!this.ctx) return; const t = this.ctx.currentTime; const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); gain.connect(this.ctx.destination); osc.connect(gain);
+        if(type==='spawn'){ osc.frequency.setValueAtTime(300,t); osc.frequency.exponentialRampToValueAtTime(50,t+.2); gain.gain.setValueAtTime(.1,t); gain.gain.exponentialRampToValueAtTime(.01,t+.2); osc.start(); osc.stop(t+.2); }
+        else if(type==='attack'){ osc.type='triangle'; osc.frequency.setValueAtTime(150,t); osc.frequency.linearRampToValueAtTime(100,t+.05); gain.gain.setValueAtTime(.05,t); gain.gain.linearRampToValueAtTime(0,t+.05); osc.start(); osc.stop(t+.05); }
+        else if(type==='boom'){ osc.type='sawtooth'; osc.frequency.setValueAtTime(120,t); osc.frequency.exponentialRampToValueAtTime(10,t+.4); gain.gain.setValueAtTime(.2,t); gain.gain.exponentialRampToValueAtTime(.01,t+.4); osc.start(); osc.stop(t+.4); }
+        else if(type==='ui'){ osc.frequency.setValueAtTime(800,t); gain.gain.setValueAtTime(.05,t); gain.gain.exponentialRampToValueAtTime(.01,t+.1); osc.start(); osc.stop(t+.1); }
+    }
+};
+class Vector2 { constructor(x,y){this.x=x;this.y=y;} add(v){this.x+=v.x;this.y+=v.y;return this;} sub(v){this.x-=v.x;this.y-=v.y;return this;} mult(n){this.x*=n;this.y*=n;return this;} mag(){return Math.sqrt(this.x*this.x+this.y*this.y);} normalize(){let m=this.mag();if(m>0)this.mult(1/m);return this;} dist(v){return Math.hypot(this.x-v.x,this.y-v.y);} copy(){return new Vector2(this.x,this.y);}}
+class ParticlePool { constructor(){this.pool=[];this.max=200;} get(x,y,c,t,v){let p=this.pool.find(i=>!i.active); if(!p){if(this.pool.length<this.max){p=new Particle();this.pool.push(p);}else return null;} p.reset(x,y,c,t,v); return p;} updateAndDraw(ctx){this.pool.forEach(p=>{if(p.active){p.update();p.draw(ctx);}});} clear(){this.pool.forEach(p=>p.active=false);} }
+class Particle { constructor(){this.active=false;this.pos=new Vector2(0,0);this.vel=new Vector2(0,0);} reset(x,y,c,t,v){this.active=true;this.pos.x=x;this.pos.y=y;this.type=t;this.color=c;this.life=1.0; if(t==='text'||t==='emote'){this.text=v;this.vel=new Vector2(0,t==='emote'?-0.8:-2.5);this.scale=t==='emote'?1:Math.min(2,0.8+v/200);}else if(t==='spawn_flash'){this.vel=new Vector2(0,0);this.size=10;}else if(t==='water_ripple'){this.vel=new Vector2(0.5,0);this.size=Math.random()*5+2;}else{this.vel=new Vector2((Math.random()-0.5)*3,(Math.random()-0.5)*3);this.size=Math.random()*4+2;}} update(){this.pos.add(this.vel);this.life-=0.03;if(this.life<=0)this.active=false;if(this.type==='spawn_flash')this.size+=2;} draw(ctx){if(!this.active)return;ctx.globalAlpha=Math.max(0,this.life); if(this.type==='emote'){ctx.font="30px sans-serif";ctx.fillText(this.text,this.pos.x,this.pos.y);}else if(this.type==='spawn_flash'){ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(this.pos.x,this.pos.y,this.size,0,Math.PI*2);ctx.fill();}else if(this.type==='water_ripple'){ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.arc(this.pos.x,this.pos.y,this.size,0,Math.PI*2);ctx.stroke();}else if(this.type==='text'){ctx.fillStyle=this.color;ctx.font="bold 16px sans-serif";ctx.fillText(this.text,this.pos.x,this.pos.y);}else{ctx.fillStyle=this.color;ctx.beginPath();ctx.arc(this.pos.x,this.pos.y,this.size,0,Math.PI*2);ctx.fill();} ctx.globalAlpha=1;} }
+
+// --- 實體類別 (Game Entities) ---
+class Entity {
+    constructor(x, y, team, radius) { this.pos=new Vector2(x,y); this.team=team; this.radius=radius; this.dead=false; this.hp=100; this.maxHp=100; this.flash=0; this.shakeX=0; this.shakeY=0; this.knockbackVel=new Vector2(0,0); }
+    takeDamage(amt, isCrit=false) {
+        this.hp-=amt; this.flash=5; this.shakeX=(Math.random()-0.5)*6; this.shakeY=(Math.random()-0.5)*6;
+        Game.particles.get(this.pos.x, this.pos.y-30, '#fff', isCrit?'crit':'text', Math.floor(amt)+(isCrit?"!":""));
+        if(this.hp<=0) { this.dead=true; for(let i=0;i<3;i++) Game.particles.get(this.pos.x,this.pos.y,'#a55eea','soul',0); }
+    }
+    drawHp(ctx, offset) {
+        if(this.hp<this.maxHp && this.hp>0) {
+            const w=32; ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(this.pos.x-w/2-2+this.shakeX, this.pos.y-this.radius-offset-2+this.shakeY, w+4, 8);
+            ctx.fillStyle=this.team==='player'?CONFIG.COLORS.P_MAIN:CONFIG.COLORS.E_MAIN; ctx.fillRect(this.pos.x-w/2+this.shakeX, this.pos.y-this.radius-offset+this.shakeY, w*(this.hp/this.maxHp), 4);
+        }
+    }
+    drawShadow(ctx) {
+        ctx.fillStyle = this.type==='air' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y+(this.type==='air'?40:0), this.radius, this.radius*0.6, 0, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+class Unit extends Entity {
+    constructor(x, y, team, key) {
+        const d = CARDS[key]; super(x, y, team, d.radius);
+        this.key=key; this.hp=d.hp; this.maxHp=d.hp; this.dmg=d.dmg; this.speed=d.speed; this.range=d.range; this.atkSpd=d.atkSpd; this.type=d.type||'ground'; this.targetType=d.target; this.mass=d.mass;
+        this.deployTimer=d.deployTime; this.maxDeploy=d.deployTime; this.atkTimer=0; this.facing=1; this.frame=Math.random()*100;
+        this.chargeSpeed=d.chargeSpeed||0; this.chargeDmgMult=d.chargeDmgMult||1; this.isCharging=false; this.moveTime=0;
+    }
+    update() {
+        if(this.dead) return;
+        this.shakeX*=0.8; this.shakeY*=0.8;
+        if(this.knockbackVel.mag()>0.1) { this.pos.add(this.knockbackVel); this.knockbackVel.mult(0.85); this.collide(); return; }
+        if(this.deployTimer>0) { this.deployTimer--; return; }
+        this.frame++; if(this.flash>0) this.flash--; if(this.atkTimer>0) this.atkTimer--;
+        
+        const target = this.findTarget();
+        if(target) {
+            const dist = this.pos.dist(target.pos);
+            if(dist <= this.range + this.radius + target.radius) {
+                this.state='attack';
+                if(this.atkTimer <= 0) this.attack(target);
+                this.moveTime=0; this.isCharging=false;
+            } else if(this.speed > 0) {
+                this.state='move'; this.moveTowards(target.pos); this.moveTime++;
+                if(this.chargeSpeed>0 && this.moveTime>120) this.isCharging=true;
+            }
+        } else if(this.speed > 0) {
+            this.state='move'; const goalY = this.team==='player' ? -100 : Game.height+100;
+            this.moveTowards(new Vector2(this.pos.x, goalY)); this.moveTime++;
+        }
+        if(this.speed>0) this.collide();
+    }
+    moveTowards(dest) {
+        let target = dest.copy();
+        const riverY = Game.height * CONFIG.RIVER_OFFSET;
+        if(this.type!=='air' && ((this.pos.y<riverY && dest.y>riverY) || (this.pos.y>riverY && dest.y<riverY)) && Math.abs(this.pos.y-riverY)>20) {
+            const bL = Game.width*0.25, bR = Game.width*0.75;
+            const bridgeX = Math.abs(this.pos.x-bL)<Math.abs(this.pos.x-bR) ? bL : bR;
+            target = new Vector2(bridgeX + (this.pos.x%30-15), riverY);
+        }
+        let spd = this.isCharging ? this.chargeSpeed : this.speed;
+        const dir = target.sub(this.pos).normalize();
+        this.pos.add(dir.mult(spd));
+        if(dir.x>0.1) this.facing=1; else if(dir.x<-0.1) this.facing=-1;
+    }
+    collide() {
+        if(this.type==='air') return;
+        const force = new Vector2(0,0);
+        Game.units.forEach(u => {
+            if(u===this || u.dead || u.deployTimer>0 || u.type==='air') return;
+            const d = this.pos.dist(u.pos), minD = this.radius+u.radius;
+            if(d<minD) force.add(this.pos.copy().sub(u.pos).normalize().mult((minD-d)*0.15 * Math.min(2, u.mass/this.mass)));
+        });
+        this.pos.add(force);
+        this.pos.x = Math.max(15, Math.min(Game.width-15, this.pos.x));
+    }
+    findTarget() {
+        const list = this.targetType==='building' ? [...Game.towers, ...Game.units.filter(u=>u.type==='building')] : [...Game.towers, ...Game.units];
+        let best = null, minD = Infinity;
+        list.forEach(t => {
+            if(t.team!==this.team && !t.dead && t.deployTimer<=0) {
+                if(t instanceof Tower && t.isKing && !t.active && t.team!==this.team) return;
+                const d = this.pos.dist(t.pos); if(d<minD) { minD=d; best=t; }
+            }
+        });
+        if(!best && this.targetType!=='building') best = Game.towers.find(t=>t.team!==this.team && t.isKing);
+        return best;
+    }
+    attack(target) {
+        const dmg = this.isCharging ? this.dmg * this.chargeDmgMult : this.dmg;
+        if(this.range>50) Game.projectiles.push(new Projectile(this.pos, target, dmg, this.aoe, this.key, this.team));
+        else {
+            const isCrit = (this.key==='minipekka' || this.isCharging);
+            target.takeDamage(dmg, isCrit);
+            AudioSys.play(this.isCharging?'charge_hit':(isCrit?'heavy_hit':'attack'));
+            Game.particles.get((this.pos.x+target.pos.x)/2, (this.pos.y+target.pos.y)/2, '#fff', 'spark', 0);
+        }
+        this.atkTimer = this.atkSpd;
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.pos.x+this.shakeX, this.pos.y+this.shakeY); if(this.type==='air') ctx.translate(0,-40);
+        if(this.deployTimer>0) {
+            ctx.globalAlpha=0.6; ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.arc(0,0,this.radius+5,0,Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(0,0); ctx.fillStyle='#ecf0f1'; ctx.arc(0,0,this.radius+5,-Math.PI/2,-Math.PI/2+(Math.PI*2*(1-this.deployTimer/this.maxDeploy))); ctx.lineTo(0,0); ctx.fill(); ctx.restore(); return;
+        }
+        if(this.flash>0) ctx.filter='brightness(3)';
+        
+        const col = this.team==='player' ? CONFIG.COLORS.P_MAIN : CONFIG.COLORS.E_MAIN;
+        const bob = Math.sin(this.frame*0.2)*2;
+        ctx.translate(0, -bob); ctx.scale(this.facing, 1);
+
+        // --- 簡易繪製邏輯 (可替換為更複雜的Sprite) ---
+        if (this.key === 'giant') {
+            ctx.fillStyle = '#d35400'; ctx.fillRect(-14, -28, 28, 28);
+            ctx.fillStyle = '#e67e22'; ctx.beginPath(); ctx.arc(0, -34, 12, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = col; ctx.fillRect(-14,-22,28,12);
+        } else if (this.key === 'knight') {
+            ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, -8, 12, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+            ctx.save(); ctx.translate(10, -5);
+            const swing = this.state === 'attack' ? Math.sin(this.frame*0.6)*1.5 : -0.5;
+            ctx.rotate(swing);
+            ctx.fillStyle = '#bdc3c7'; ctx.fillRect(0, -12, 4, 24); ctx.fillRect(-3, 8, 10, 3);
+            ctx.restore();
+        } else if (this.key === 'archer') {
+            ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.moveTo(0,-20); ctx.lineTo(-8,-5); ctx.lineTo(8,-5); ctx.fill();
+            ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(0, -5, 6, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#8e44ad'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(8, 0, 8, -Math.PI/2, Math.PI/2); ctx.stroke();
+        } else if (this.key === 'prince') {
+            ctx.fillStyle = col; ctx.fillRect(-8, -15, 16, 15);
+            ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(0, -22, 8, 0, Math.PI*2); ctx.fill();
+            ctx.save(); ctx.translate(8, -10);
+            const angle = this.state === 'move' ? Math.PI/4 : 0;
+            ctx.rotate(angle);
+            ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(25, -2); ctx.lineTo(25, 2); ctx.fill();
+            if (this.isCharging) { ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(0,-1,30,2); }
+            ctx.restore();
+        } else if (this.key === 'hogrider') {
+            ctx.fillStyle = '#8d6e63'; ctx.beginPath(); ctx.arc(0, -20, 8, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, -20, 8, Math.PI, 0); ctx.fill();
+            ctx.fillStyle = '#ff7675'; ctx.fillRect(-10, -15, 20, 15);
+            ctx.fillStyle = '#634200'; ctx.beginPath(); ctx.ellipse(0, 0, 12, 8, 0, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#dfe6e9'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(10,-15); ctx.lineTo(10,-25); ctx.stroke();
+        } else {
+            ctx.fillStyle = (this.key==='skarmy'?'#fff':col);
+            ctx.beginPath(); ctx.arc(0, -5, this.radius-2, 0, Math.PI*2); ctx.fill();
+        }
+
+        ctx.restore(); this.drawHp(ctx, this.radius+(this.type==='air'?45:5));
+    }
+}
+
+class Tower extends Entity {
+    constructor(x, y, team, isKing) {
+        super(x, y, team, isKing?32:24);
+        this.isKing = isKing; this.active = !isKing;
+        this.maxHp = isKing?4000:2500; this.hp = this.maxHp; this.range = 160; this.atkTimer = 0;
+        this.name = ""; 
+    }
+    update() {
+        this.shakeX*=0.8; this.shakeY*=0.8; if(this.flash>0) this.flash--;
+        if(this.isKing && !this.active) { if(this.hp<this.maxHp || Game.towers.some(t=>t.team===this.team && !t.isKing && t.dead)) this.active=true; }
+        if(!this.active) return;
+        if(this.atkTimer>0) this.atkTimer--;
+        let target = null, minD = this.range;
+        Game.units.forEach(u => { if(u.team!==this.team && !u.dead && u.deployTimer<=0) { const d=this.pos.dist(u.pos); if(d<minD){minD=d; target=u;} } });
+        if(target && this.atkTimer<=0) {
+            Game.projectiles.push(new Projectile(new Vector2(this.pos.x, this.pos.y-(this.isKing?40:30)), target, this.isKing?120:90, 0, 'arrow', this.team));
+            this.atkTimer = 45;
+        }
+    }
+    draw(ctx) {
+        const x = this.pos.x + this.shakeX, y = this.pos.y + this.shakeY;
+        const col = this.team === 'player' ? CONFIG.COLORS.P_MAIN : CONFIG.COLORS.E_MAIN;
+        
+        ctx.save(); if(this.flash>0) ctx.translate((Math.random()-0.5)*4, (Math.random()-0.5)*4);
+        
+        ctx.fillStyle = '#95a5a6'; const w = this.radius * 1.8; const h = this.isKing ? 40 : 30;
+        ctx.fillRect(x - w/2, y - 10, w, 20);
+        ctx.fillStyle = '#bdc3c7'; ctx.fillRect(x - w/2 + 4, y - 10 - h, w - 8, h);
+        ctx.fillStyle = col; ctx.fillRect(x - w/2 + 4, y - 10 - h + 5, w - 8, 6);
+        
+        const topY = y - 10 - h;
+        if(this.isKing) {
+            if(this.active) {
+                ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x - w/2 - 2, topY - 6); ctx.lineTo(x + w/2 + 2, topY - 6); ctx.lineTo(x, topY - 30); ctx.fill();
+                ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, topY-30); ctx.lineTo(x, topY-45); ctx.stroke();
+            } else {
+                ctx.fillStyle = col; ctx.fillRect(x - 15, topY - 20, 30, 20);
+                ctx.font = "20px sans-serif"; ctx.textAlign="center"; ctx.fillText("💤", x, topY - 25 + (Math.sin(Date.now()/300)*5));
+            }
+        } else {
+            ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.moveTo(x - w/2, topY - 6); ctx.lineTo(x + w/2, topY - 6); ctx.lineTo(x, topY - 20); ctx.fill();
+        }
+        ctx.restore(); this.drawHp(ctx, this.isKing?65:45);
+    }
+}
+
+class Projectile {
+    constructor(pos, target, dmg, aoe, key, team) {
+        this.pos = pos.copy(); this.startPos = pos.copy(); this.target = target; this.dmg = dmg; this.aoe = aoe; this.key = key; this.team = team;
+        this.isSpell = (key==='fireball'||key==='barrel'||key==='zap');
+        this.dest = this.isSpell ? target.copy() : target.pos.copy();
+        this.speed = key==='barrel'?Math.max(3,this.pos.dist(this.dest)/60) : (key==='fireball'?6:7);
+        this.height = 0; this.dead = false; this.tail=[];
+    }
+    update() {
+        if(!this.isSpell && !this.target.dead) this.dest = this.target.pos.copy();
+        const dToT = this.pos.dist(this.dest), travelled = this.pos.dist(this.startPos);
+        if(this.isSpell) this.height = Math.sin((travelled/(travelled+dToT))*Math.PI) * 120;
+        
+        if(dToT < this.speed+5 && this.height<15) {
+            this.dead = true;
+            let targets = (this.aoe>0 || this.isSpell) ? [...Game.units, ...Game.towers].filter(e=>e.pos.dist(this.dest)<=this.aoe) : [this.target];
+            if(this.aoe>0) AudioSys.play('boom');
+            targets.forEach(t => { if(t.team!==this.team){ t.takeDamage(this.dmg); if(this.key==='fireball') t.knockbackVel.add(t.pos.copy().sub(this.pos).normalize().mult(8)); } });
+        } else {
+            this.pos.add(this.dest.copy().sub(this.pos).normalize().mult(this.speed));
+        }
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y-this.height);
+        if(this.key === 'arrow') {
+            const angle = Math.atan2(this.dest.y - this.pos.y, this.dest.x - this.pos.x);
+            ctx.rotate(angle);
+            ctx.fillStyle = '#bdc3c7'; ctx.fillRect(-10, -1, 20, 2);
+            ctx.fillStyle = '#ecf0f1'; ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-15, -3); ctx.lineTo(-15, 3); ctx.fill();
+            ctx.fillStyle = (this.team === 'player' ? CONFIG.COLORS.P_MAIN : CONFIG.COLORS.E_MAIN); ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(5, -3); ctx.lineTo(5, 3); ctx.fill();
+        } else {
+            ctx.fillStyle = this.team==='player'?CONFIG.COLORS.P_MAIN:CONFIG.COLORS.E_MAIN;
+            if(this.key==='fireball') ctx.fillStyle='#e74c3c';
+            ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+
+
+// --- Lobby Logic (大廳邏輯) ---
 const Lobby = {
     init() {
         this.renderResources();
@@ -430,29 +734,36 @@ const Lobby = {
     }
 };
 
-// --- Game Logic ---
+// --- Game Logic (戰鬥邏輯 - 整合) ---
 const Game = {
     canvas: null, ctx: null, width: 0, height: 0, running: false,
-    units: [], towers: [], projectiles: [], elixir: 5, hand: [], nextCard: null,
-    socket: null, roomID: null, selectedCardIdx: null,
+    units: [], towers: [], projectiles: [], particles: new ParticlePool(),
+    elixir: 5, hand: [], nextCard: null, 
+    socket: null, roomID: null, 
+    selectedIdx: null, draggingIdx: null, dragPos: {x:0,y:0}, isDragging: false,
 
     init() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         
-        // 不要在一開始 resize，因為 container 是 hidden，寬高會是 0
-        // 綁定輸入事件
+        // 綁定拖曳/點擊事件
         const wrapper = document.getElementById('canvas-wrapper');
-        wrapper.addEventListener('pointerdown', (e) => this.onInput(e));
+        const container = document.getElementById('game-container');
         
+        // 使用原生 Pointer Event 支援手機與滑鼠
+        container.onpointerdown = e => this.pDown(e);
+        container.onpointermove = e => this.pMove(e);
+        container.onpointerup = e => this.pUp(e);
+
+        AudioSys.init();
         Lobby.init();
     },
 
-    // 這是修復的關鍵：切換畫面並計算尺寸
+    // 切換畫面並計算尺寸
     activateGameView() {
         document.getElementById('lobby-layer').style.display = 'none';
         const container = document.getElementById('game-container');
-        container.classList.add('active'); // 設為 flex 顯示
+        container.classList.add('active'); 
         
         // 強制等待 DOM 渲染後再 resize
         setTimeout(() => {
@@ -464,15 +775,7 @@ const Game = {
         window.addEventListener('resize', () => this.resize());
     },
 
-    resize() {
-        const wrapper = document.getElementById('canvas-wrapper');
-        if(wrapper) {
-            this.width = wrapper.clientWidth;
-            this.height = wrapper.clientHeight;
-            this.canvas.width = this.width;
-            this.canvas.height = this.height;
-        }
-    },
+    resize(){ const w=document.getElementById('canvas-wrapper'); if(w){this.width=w.clientWidth; this.height=w.clientHeight; this.canvas.width=this.width; this.canvas.height=this.height;} },
 
     startMatchmaking() {
         if(!this.socket) this.socket = io();
@@ -495,43 +798,47 @@ const Game = {
 
         this.socket.on('remote_action', (data) => {
             if(data.type === 'spawn') {
-                // 轉換座標 (對手視角反轉)
                 const realX = (1 - data.nx) * this.width;
                 const realY = (1 - data.ny) * this.height;
-                this.spawnUnit(data.card, realX, realY, 'enemy', true);
+                this.spawn(data.card, realX, realY, 'enemy', true);
+            } else if (data.type === 'emote') {
+                this.showEmote(data.val, 'enemy');
             }
         });
     },
 
     startGame() {
-        this.activateGameView(); // 切換畫面 & 修正 Canvas 尺寸
+        this.activateGameView();
         this.running = true;
         this.elixir = 5;
-        this.units = []; this.projectiles = [];
+        this.units = []; this.projectiles = []; this.particles.clear();
         
         // 初始化塔
         const pY = this.height - 100, eY = 100;
         const bL = this.width * 0.25, bR = this.width * 0.75;
-        
         this.towers = [
             new Tower(bL, pY, 'player', false), new Tower(bR, pY, 'player', false), new Tower(this.width/2, pY+40, 'player', true),
             new Tower(bL, eY, 'enemy', false), new Tower(bR, eY, 'enemy', false), new Tower(this.width/2, eY-40, 'enemy', true)
         ];
 
-        // 牌組
+        // 手牌
         let deck = [...Player.deck, ...Player.deck].sort(()=>Math.random()-0.5);
         this.hand = deck.slice(0,4);
         this.nextCard = deck[4];
-        this.renderHand();
+        this.renderDeck();
 
         // 計時器
-        let timeLeft = 180;
+        let timeLeft = CONFIG.GAME_TIME;
         const timerEl = document.getElementById('timer');
         this.timerInt = setInterval(() => {
             if(!this.running) return;
             timeLeft--;
             const m = Math.floor(timeLeft/60), s = timeLeft%60;
             timerEl.innerText = `0${m}:${s<10?'0'+s:s}`;
+            if(timeLeft===CONFIG.DOUBLE_ELIXIR_THRESHOLD) {
+                document.getElementById('elixir-mode-txt').className='show';
+                setTimeout(()=>document.getElementById('elixir-mode-txt').className='',2000);
+            }
             if(timeLeft <= 0) this.endGame(null);
         }, 1000);
 
@@ -542,11 +849,10 @@ const Game = {
                 const cards = ['knight','archer','giant'];
                 const k = cards[Math.floor(Math.random()*cards.length)];
                 const x = Math.random()>0.5 ? bL : bR;
-                this.spawnUnit(k, x, 80, 'enemy');
+                this.spawn(k, x, 80, 'enemy', true);
             }, 4000);
         }
 
-        this.lastTime = Date.now();
         this.loop();
     },
 
@@ -554,218 +860,158 @@ const Game = {
         if(!this.running) return;
         requestAnimationFrame(() => this.loop());
         
-        const now = Date.now();
-        // const dt = (now - this.lastTime) / 1000; // 未使用，保留給物理計算
-        this.lastTime = now;
+        this.elixir = Math.min(CONFIG.ELIXIR_MAX, this.elixir + CONFIG.ELIXIR_RATE_BASE);
+        this.renderElixir();
+        
+        if(Math.random()<0.05) Game.particles.get(Math.random()*this.width, this.height*0.5+(Math.random()-0.5)*20, null, 'water_ripple', 0);
 
-        if(this.elixir < CONFIG.ELIXIR_MAX) this.elixir += CONFIG.ELIXIR_RATE;
-        document.getElementById('elixir-fill').style.width = (this.elixir*10)+'%';
-        document.getElementById('elixir-badge').innerText = Math.floor(this.elixir);
-        document.querySelectorAll('#hand-cards .card').forEach((el,i)=>{
-             if(this.hand[i]) el.classList.toggle('disabled', this.elixir < DB.cards[this.hand[i]].cost);
-        });
-
-        this.updateEntities();
-        this.draw();
-    },
-
-    updateEntities() {
-        [...this.units, ...this.towers].forEach(e => {
-            if(e.dead) return;
-            let target = null, minD = e.range + 50;
-            const targets = e.targetType === 'building' ? 
-                [...this.towers, ...this.units.filter(u=>u.type==='building')] : [...this.units, ...this.towers];
-            
-            targets.forEach(other => {
-                if(e.team !== other.team && !other.dead) {
-                    let d = Math.hypot(e.x - other.x, e.y - other.y);
-                    if(d < minD) { minD = d; target = other; }
-                }
-            });
-
-            if(target && minD <= e.range + target.radius) {
-                if(e.atkTimer <= 0) {
-                    // 攻擊發射
-                    this.projectiles.push({
-                        x: e.x, y: e.y, tx: target.x, ty: target.y, target: target,
-                        speed: 6, dmg: e.dmg, team: e.team, isSpell: false
-                    });
-                    e.atkTimer = 60; // 約1秒攻擊一次
-                }
-            } else if(target && e.speed > 0) {
-                // 移動
-                let angle = Math.atan2(target.y - e.y, target.x - e.x);
-                e.x += Math.cos(angle) * e.speed;
-                e.y += Math.sin(angle) * e.speed;
-            } else if(e.speed > 0) {
-                // 沒目標往前走
-                e.y += (e.team === 'player' ? -1 : 1) * e.speed;
-            }
-            if(e.atkTimer > 0) e.atkTimer--;
-        });
-
-        // 子彈
-        this.projectiles.forEach(p => {
-            if(p.dead) return;
-            let dx = p.tx - p.x, dy = p.ty - p.y;
-            let dist = Math.hypot(dx, dy);
-            
-            if(!p.isSpell && p.target && !p.target.dead) {
-                // 追蹤目標更新位置
-                p.tx = p.target.x; p.ty = p.target.y;
-                dx = p.tx - p.x; dy = p.ty - p.y; dist = Math.hypot(dx, dy);
-            }
-
-            if(dist < p.speed || (p.isSpell && dist < 10)) {
-                p.dead = true;
-                // 傷害判定
-                const targets = [...this.units, ...this.towers];
-                targets.forEach(u => {
-                    if(u.team !== p.team && !u.dead && Math.hypot(u.x - p.tx, u.y - p.ty) < (p.aoe || 20)) {
-                        u.hp -= p.dmg;
-                        if(u.hp <= 0) u.dead = true;
-                    }
-                });
-            } else {
-                p.x += (dx/dist) * p.speed;
-                p.y += (dy/dist) * p.speed;
-            }
-        });
-
+        [...this.units, ...this.towers, ...this.projectiles].forEach(e => e.update());
+        this.particles.updateAndDraw(this.ctx);
         this.units = this.units.filter(u => !u.dead);
         this.projectiles = this.projectiles.filter(p => !p.dead);
         this.towers = this.towers.filter(t => !t.dead);
 
-        if(!this.towers.some(t => t.team === 'player' && t.isKing)) this.endGame(false);
-        else if(!this.towers.some(t => t.team === 'enemy' && t.isKing)) this.endGame(true);
+        const pK = this.towers.find(t=>t.team==='player'&&t.isKing);
+        const eK = this.towers.find(t=>t.team==='enemy'&&t.isKing);
+        if(!pK) this.endGame(false); else if(!eK) this.endGame(true);
+
+        this.draw();
     },
 
     draw() {
         const ctx = this.ctx;
-        // 重要：若寬高為0不繪製
-        if(this.width === 0 || this.height === 0) return;
+        if(this.width === 0) return;
+        ctx.clearRect(0,0,this.width,this.height);
         
-        ctx.clearRect(0,0,this.width, this.height);
+        // Map
+        ctx.fillStyle = CONFIG.COLORS.GRASS; ctx.fillRect(0,0,this.width,this.height);
+        ctx.fillStyle = 'rgba(0,0,0,0.03)'; const size = 40;
+        for(let x=0; x<this.width; x+=size) for(let y=0; y<this.height; y+=size) if((x/size + y/size)%2===0) ctx.fillRect(x, y, size, size);
         
-        // 背景與地圖
-        ctx.fillStyle = '#27ae60'; ctx.fillRect(0,0,this.width,this.height);
-        ctx.fillStyle = 'rgba(0,0,0,0.05)'; // 格線
-        for(let i=0; i<this.width; i+=40) ctx.fillRect(i,0,1,this.height);
-        for(let i=0; i<this.height; i+=40) ctx.fillRect(0,i,this.width,1);
+        const ry = this.height*CONFIG.RIVER_OFFSET;
+        ctx.fillStyle = CONFIG.COLORS.WATER; ctx.fillRect(0, ry-30, this.width, 60);
+        ctx.fillStyle = 'rgba(255,255,255,0.2)'; const t = Date.now()/500;
+        for(let y=ry-25; y<ry+25; y+=8) { const s = Math.sin(y*0.1 + t)*10; ctx.fillRect(0, y, this.width, 2); }
 
-        const ry = this.height * 0.5;
-        ctx.fillStyle = '#3498db'; ctx.fillRect(0, ry-20, this.width, 40); // 河流
-        ctx.fillStyle = '#95a5a6'; // 橋
-        const bW = 40;
-        ctx.fillRect(this.width*0.25-bW/2, ry-25, bW, 50);
-        ctx.fillRect(this.width*0.75-bW/2, ry-25, bW, 50);
+        const drawBridge = (bx) => {
+            ctx.fillStyle = '#636e72'; ctx.fillRect(bx-30, ry-35, 60, 70);
+            ctx.fillStyle = '#b2bec3'; ctx.fillRect(bx-26, ry-35, 52, 70);
+            ctx.fillStyle = '#dfe6e9'; for(let i=0; i<6; i++) ctx.fillRect(bx-24, ry-30 + i*11, 48, 4);
+            ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(bx-26, ry+35, 52, 5);
+        };
+        drawBridge(this.width*0.25); drawBridge(this.width*0.75);
 
-        // 繪製單位與塔
-        [...this.towers, ...this.units].forEach(u => {
-            ctx.save();
-            ctx.translate(u.x, u.y);
-            // 血條
-            const hpPct = Math.max(0, u.hp/u.maxHp);
-            ctx.fillStyle = '#000'; ctx.fillRect(-15, -u.radius-8, 30, 5);
-            ctx.fillStyle = u.team === 'player' ? '#3498db' : '#e74c3c'; ctx.fillRect(-14, -u.radius-7, 28*hpPct, 3);
-
-            // 本體
-            if(u.icon) {
-                ctx.font = "24px serif"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText(u.icon, 0, 0);
-            } else {
-                // 塔
-                ctx.fillStyle = u.team === 'player' ? '#2980b9' : '#c0392b';
-                if(u.isKing) ctx.fillStyle = '#f1c40f';
-                ctx.fillRect(-u.radius, -u.radius, u.radius*2, u.radius*2);
-            }
+        // Entities
+        this.units.forEach(u=>u.drawShadow(ctx)); this.towers.forEach(t=>t.drawShadow(ctx));
+        [...this.towers, ...this.units].sort((a,b)=>a.pos.y-b.pos.y).forEach(e=>e.draw(ctx));
+        this.projectiles.forEach(p=>p.draw(ctx));
+        
+        // Dragging Visual
+        if(this.isDragging) {
+            const d = CARDS[this.hand[this.draggingIdx]];
+            const valid = d.type==='spell' || this.dragPos.y > this.height*CONFIG.RIVER_OFFSET;
+            ctx.save(); ctx.translate(this.dragPos.x, this.dragPos.y);
+            ctx.globalAlpha=0.5; ctx.fillStyle=valid?'#3498db':'#e74c3c';
+            ctx.beginPath(); ctx.arc(0,0,d.radius||d.aoe||20,0,Math.PI*2); ctx.fill();
+            ctx.font="30px serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(d.icon,0,0);
             ctx.restore();
-        });
-
-        // 子彈
-        this.projectiles.forEach(p => {
-            ctx.fillStyle = p.isSpell ? '#e67e22' : '#ffeaa7';
-            ctx.beginPath(); ctx.arc(p.x, p.y, p.isSpell?8:4, 0, Math.PI*2); ctx.fill();
-        });
+        }
     },
 
-    onInput(e) {
-        if(!this.running || this.selectedCardIdx === null) return;
+    // --- 輸入控制 (拖曳與點擊) ---
+    pDown(e) {
+        if(!this.running) return;
+        const t = e.target.closest('.card');
         const rect = this.canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        // 只能放己方半場 (spell 除外)
-        const cardKey = this.hand[this.selectedCardIdx];
-        const d = DB.cards[cardKey];
-        if(d.type !== 'spell' && y < this.height/2) { 
-            this.showMessage("僅能部署在己方區域"); return; 
-        }
-
-        if(this.elixir >= d.cost) {
-            this.elixir -= d.cost;
-            this.spawnUnit(cardKey, x, y, 'player');
-            
-            // 傳送動作給對手
-            if(this.socket && this.roomID !== 'local_bot') {
-                // 座標正規化 (0~1) 傳送
-                this.socket.emit('action', {
-                    roomID: this.roomID, type: 'spawn', card: cardKey,
-                    nx: x / this.width, ny: y / this.height
-                });
+        if(t && t.dataset.index) {
+            const idx = parseInt(t.dataset.index);
+            if(this.elixir >= CARDS[this.hand[idx]].cost) {
+                this.draggingIdx = idx; this.selectedIdx = idx; this.isDragging = true;
+                this.dragPos = {x: e.clientX-rect.left, y: e.clientY-rect.top};
+                this.renderDeck();
             }
-
-            this.hand[this.selectedCardIdx] = this.nextCard;
-            this.nextCard = Player.deck[Math.floor(Math.random()*Player.deck.length)];
-            this.selectedCardIdx = null;
-            this.renderHand();
-        } else {
-            this.showMessage("聖水不足！");
+        } else if (this.selectedIdx !== null && !this.isDragging) {
+            // 點擊施放
+            const y = e.clientY - rect.top;
+            if(y < this.height) this.trySpawn(this.selectedIdx, e.clientX-rect.left, y);
         }
     },
-
-    spawnUnit(key, x, y, team, fromRemote=false) {
-        const d = DB.cards[key];
-        // 等級加成
-        const level = Player.collection[key].level;
-        const mult = 1 + (level-1)*0.1;
-
-        if(d.type === 'spell') {
-            this.projectiles.push({
-                x: fromRemote ? x : this.width/2, // 從遠處飛來
-                y: fromRemote ? 0 : this.height,
-                tx: x, ty: y, speed: 10, dmg: d.dmg*mult, team: team, isSpell: true, aoe: d.aoe
+    pMove(e) { 
+        const rect = this.canvas.getBoundingClientRect();
+        if(this.isDragging) this.dragPos = {x: e.clientX-rect.left, y: e.clientY-rect.top};
+    },
+    pUp(e) {
+        if(this.isDragging) {
+            const rect = this.canvas.getBoundingClientRect();
+            if(e.clientY-rect.top < this.height-100) this.trySpawn(this.draggingIdx, this.dragPos.x, this.dragPos.y);
+            this.isDragging=false; this.draggingIdx=null; this.selectedIdx=null; this.renderDeck();
+        }
+    },
+    
+    trySpawn(idx, x, y) {
+        const key = this.hand[idx];
+        const d = CARDS[key];
+        const riverY = this.height * CONFIG.RIVER_OFFSET;
+        if(d.type!=='spell' && y < riverY) { this.showMessage("僅能部署於己方區域"); return; }
+        
+        this.elixir -= d.cost;
+        this.spawn(key, x, y, 'player');
+        
+        if(this.socket && this.roomID !== 'local_bot') {
+            this.socket.emit('action', {
+                roomID: this.roomID, type: 'spawn', card: key,
+                nx: x / this.width, ny: y / this.height
             });
+        }
+        this.hand[idx] = this.nextCard;
+        this.nextCard = Player.deck[Math.floor(Math.random()*Player.deck.length)];
+        this.renderDeck();
+    },
+
+    spawn(key, x, y, team, fromRemote=false) {
+        const d = CARDS[key];
+        AudioSys.play('spawn');
+        if(d.type==='spell') {
+            Game.projectiles.push(new Projectile(new Vector2(this.width/2, team==='player'?this.height:0), new Vector2(x,y), d.dmg, d.aoe, key, team));
         } else {
             const count = d.count || 1;
             for(let i=0; i<count; i++) {
-                this.units.push({
-                    x: x + (Math.random()-0.5)*20, y: y + (Math.random()-0.5)*20,
-                    team: team, hp: d.hp*mult, maxHp: d.hp*mult, dmg: d.dmg*mult,
-                    range: d.range, speed: d.speed, radius: 15,
-                    atkTimer: 0, icon: d.icon, type: d.type, targetType: d.target
-                });
+                let ox = (i-(count-1)/2)*15; 
+                this.units.push(new Unit(x+ox, y, team, key));
             }
+            Game.particles.get(x, y, '#fff', 'spawn_flash', 0);
         }
     },
 
-    renderHand() {
-        const container = document.getElementById('hand-cards');
-        container.innerHTML = '';
-        this.hand.forEach((key, i) => {
-            const d = DB.cards[key];
-            const el = document.createElement('div');
-            el.className = `card ${d.rarity}`;
-            if(this.selectedCardIdx === i) el.classList.add('selected');
-            el.innerHTML = `<div class="cost">${d.cost}</div><div class="card-inner"><div class="emoji">${d.icon}</div></div>`;
-            el.onclick = () => {
-                document.querySelectorAll('#hand-cards .card').forEach(c=>c.classList.remove('selected'));
-                if(this.selectedCardIdx === i) this.selectedCardIdx = null;
-                else { this.selectedCardIdx = i; el.classList.add('selected'); }
-            };
-            container.appendChild(el);
+    triggerEmote(emoji) {
+        this.showEmote(emoji, 'player');
+        if(this.socket && this.roomID !== 'local_bot') this.socket.emit('action', { roomID: this.roomID, type: 'emote', val: emoji });
+        document.getElementById('emote-menu').classList.remove('open');
+    },
+    showEmote(emoji, team) {
+        const t = this.towers.find(t => t.team === team && t.isKing);
+        if(t) Game.particles.get(t.pos.x, t.pos.y-60, null, 'emote', emoji);
+    },
+
+    renderElixir() {
+        document.getElementById('elixir-fill').style.width = (this.elixir*10)+'%';
+        document.getElementById('elixir-badge').innerText = Math.floor(this.elixir);
+        document.querySelectorAll('#hand-cards .card').forEach((el,i)=>{
+            if(this.hand[i]) el.classList.toggle('disabled', this.elixir < CARDS[this.hand[i]].cost);
         });
-        document.getElementById('next-icon').innerText = DB.cards[this.nextCard].icon;
+    },
+    renderDeck() {
+        document.getElementById('next-icon').innerText = CARDS[this.nextCard].icon;
+        const h = document.getElementById('hand-cards'); h.innerHTML='';
+        this.hand.forEach((k,i)=>{
+            const d=CARDS[k], el=document.createElement('div');
+            el.className=`card ${d.rarity}`; el.dataset.index=i;
+            if(this.selectedIdx===i && !this.isDragging) el.classList.add('selected');
+            if(this.draggingIdx===i) el.classList.add('dragging'); // 自定義樣式
+            el.innerHTML=`<div class="cost">${d.cost}</div><div class="card-inner"><div class="emoji">${d.icon}</div></div>`;
+            h.appendChild(el);
+        });
+        this.renderElixir();
     },
     showMessage(msg) {
         const m = document.getElementById('message'); m.innerText = msg; m.classList.add('show');
@@ -775,6 +1021,7 @@ const Game = {
         this.running = false; clearInterval(this.timerInt);
         document.getElementById('end-screen').classList.remove('hidden');
         const title = document.getElementById('end-title');
+        document.getElementById('end-screen').classList.add('active'); // Show flex
         if(win) {
             title.innerText = "勝利!"; title.style.color = "#f1c40f";
             Player.trophies += 30; Player.gold += 50;
@@ -784,14 +1031,6 @@ const Game = {
         }
     }
 };
-
-class Tower {
-    constructor(x, y, team, isKing) {
-        this.x=x; this.y=y; this.team=team; this.isKing=isKing;
-        this.hp=isKing?4000:2500; this.maxHp=this.hp; this.radius=isKing?30:25;
-        this.range=150; this.dmg=100; this.atkTimer=0; this.type='building'; this.speed=0;
-    }
-}
 
 window.onload = () => Game.init();
 </script>
